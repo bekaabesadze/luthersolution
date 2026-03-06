@@ -17,8 +17,8 @@ from sqlalchemy.pool import NullPool
 from models import Base
 
 # SQLite database file path (in backend folder, excluded from git if desired)
-DB_DIR = os.path.dirname(os.path.abspath(__file__))
-DATABASE_URL = os.environ.get("DATABASE_URL", f"sqlite:///{os.path.join(DB_DIR, 'bank_analytics.db')}")
+_data_dir = "/data" if os.path.isdir("/data") else os.path.dirname(os.path.abspath(__file__))
+DATABASE_URL = os.environ.get("DATABASE_URL", f"sqlite:///{os.path.join(_data_dir, 'bank_analytics.db')}")
 
 # Render provides postgres:// urls, but SQLAlchemy 1.4+ requires postgresql://
 if DATABASE_URL.startswith("postgres://"):
