@@ -20,6 +20,10 @@ from models import Base
 DB_DIR = os.path.dirname(os.path.abspath(__file__))
 DATABASE_URL = os.environ.get("DATABASE_URL", f"sqlite:///{os.path.join(DB_DIR, 'bank_analytics.db')}")
 
+# Render provides postgres:// urls, but SQLAlchemy 1.4+ requires postgresql://
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
 # SQLite connect_args: one connection per request (NullPool), so we do NOT share
 # the connection across threads — each thread gets its own connection. This
 # avoids SIGSEGV/crashes in libsqlite3 when multiple requests hit the DB at once.

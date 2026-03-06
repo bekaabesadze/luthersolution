@@ -184,10 +184,12 @@ def _parse_upload_to_rows(
             detail=str(e),
         )
     except Exception as e:
-        # Other errors (e.g., XML parsing, Arelle errors)
+        # Other errors (e.g., XML parsing, Arelle errors, DB issues)
+        error_msg = f"Error processing XBRL file: {str(e)}"
+        print(f"UPLOAD FAILED: {error_msg}")
         raise HTTPException(
             status_code=500,
-            detail=f"Error processing XBRL file: {str(e)}",
+            detail=error_msg,
         )
 
     # Step 4: Validate that we extracted at least some metrics
