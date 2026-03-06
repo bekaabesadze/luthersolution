@@ -256,3 +256,31 @@
   color: var(--color-error);
   border: 1px solid rgba(255, 90, 196, 0.2);
 }
+
+@media (max-width: 640px) {
+  .uploadCard {
+    padding: 1.25rem 1rem;
+    border-radius: 1rem;
+  }
+
+  .form {
+    gap: 1.25rem;
+  }
+
+  .fileLabel {
+    padding: 0.875rem 1rem;
+    font-size: 0.875rem;
+  }
+
+  .button {
+    width: 100%;
+    align-self: stretch;
+    padding: 0.8rem 1rem;
+  }
+
+  .messageInfo,
+  .messageSuccess,
+  .messageError {
+    padding: 0.875rem 1rem;
+  }
+}

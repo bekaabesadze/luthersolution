@@ -45,10 +45,12 @@ body {
   color: var(--color-text);
   background: var(--color-bg);
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
 #root {
   min-height: 100vh;
+  width: 100%;
 }
 
 /* Page content */
@@ -91,5 +93,32 @@ body {
 @media (max-width: 768px) {
   :root {
     --sidebar-width: 100%;
+  }
+
+  .page-header {
+    margin-bottom: 1.25rem;
+  }
+
+  .page-title {
+    font-size: 1.375rem;
+  }
+
+  .page-description {
+    font-size: 0.875rem;
+  }
+
+  .card {
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-title {
+    font-size: 1.25rem;
+  }
+
+  .card {
+    border-radius: var(--radius-sm);
   }
 }

@@ -12,6 +12,8 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { ReportsPage } from "./pages/ReportsPage";
 import { FilesPage } from "./pages/FilesPage";
 import { ScoreboardPage } from "./pages/ScoreboardPage";
+import { LoginPage } from "./pages/LoginPage";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 import { PrivacyPage } from "./pages/PrivacyPage";
 import { TermsPage } from "./pages/TermsPage";
 import { AboutPage } from "./pages/AboutPage";
@@ -22,11 +24,17 @@ export function App() {
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="upload" element={<UploadPage />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="camel" element={<ScoreboardPage />} />
           <Route path="scoreboard" element={<Navigate to="/camel" replace />} />
-          <Route path="files" element={<FilesPage />} />
+          <Route path="login" element={<LoginPage />} />
+
+          {/* Protected Admin Routes */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="upload" element={<UploadPage />} />
+            <Route path="files" element={<FilesPage />} />
+          </Route>
+
           <Route path="reports" element={<ReportsPage />} />
           <Route path="privacy" element={<PrivacyPage />} />
           <Route path="terms" element={<TermsPage />} />

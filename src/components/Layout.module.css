@@ -22,6 +22,7 @@
 
 .headerIsland {
   max-width: 1600px;
+  width: 100%;
   margin: 0 auto;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -47,7 +48,7 @@
 }
 
 .logo {
-  font-size: 1.25rem;
+  font-size: clamp(1rem, 1.8vw, 1.25rem);
   font-weight: 700;
   margin: 0;
   letter-spacing: -0.02em;
@@ -133,6 +134,10 @@
   border-top: 1px solid var(--color-border);
   font-size: 0.8125rem;
   color: var(--color-text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.5rem;
+  align-items: center;
 }
 
 .footerLink {
@@ -155,7 +160,45 @@
 }
 
 @media (max-width: 768px) {
+  .header {
+    padding: 0.5rem 0.75rem;
+  }
+
+  .headerIsland {
+    padding: 0.5rem 0.75rem;
+    gap: 0.75rem;
+    border-radius: 1rem;
+    min-height: auto;
+  }
+
+  .body {
+    flex-direction: column;
+  }
+
   .main {
-    padding: 1.25rem;
+    padding: 0.875rem;
+  }
+
+  .dropOverlay {
+    display: none;
+  }
+
+  .logo {
+    line-height: 1.25;
+    white-space: normal;
+  }
+
+  .footerSep {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    padding: 0.5rem;
+  }
+
+  .main {
+    padding: 0.75rem;
   }
 }

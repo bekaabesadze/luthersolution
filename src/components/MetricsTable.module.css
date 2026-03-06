@@ -31,6 +31,7 @@
 
 .table {
   width: 100%;
+  min-width: 540px;
   border-collapse: separate;
   border-spacing: 0;
   font-size: 0.9375rem;
@@ -142,4 +143,16 @@
 .toggleButton:hover {
   background: var(--color-bg-subtle);
   border-color: var(--color-border-strong);
+}
+
+@media (max-width: 768px) {
+  .table {
+    min-width: 500px;
+    font-size: 0.875rem;
+  }
+
+  .table th,
+  .table td {
+    padding: 0.65rem 0.75rem;
+  }
 }

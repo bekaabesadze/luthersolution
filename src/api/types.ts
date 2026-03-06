@@ -42,6 +42,12 @@ export interface DeleteUploadResponse {
   rows_deleted: number;
 }
 
+/** Response from POST /token */
+export interface LoginResponse {
+  access_token: string;
+  token_type: string;
+}
+
 /** Optional query params for GET /metrics */
 export interface MetricsParams {
   bank_id?: string;

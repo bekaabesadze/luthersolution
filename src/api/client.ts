@@ -12,10 +12,55 @@ import type {
   QuartersResponse,
   UploadResponse,
   DeleteUploadResponse,
+  LoginResponse,
 } from "./types";
 
 function getBaseUrl(): string {
   return import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+}
+
+function getAuthHeader(): { Authorization: string } | {} {
+  const token = localStorage.getItem("admin_token");
+  if (token) {
+    return { Authorization: `Bearer ${token}` };
+  }
+  return {};
+}
+
+/**
+ * POST /token: login to receive a JWT token.
+ */
+export async function login(password: string): Promise<LoginResponse> {
+  const formData = new URLSearchParams();
+  formData.append("username", "admin"); // Required by OAuth2PasswordRequestForm, even though backend ignores it
+  formData.append("password", password);
+
+  const res = await fetch(`${getBaseUrl()}/token`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: formData.toString(),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(formatErrorDetail(data.detail) || `Login failed (${res.status})`);
+  }
+
+  // Store token upon successful login
+  if (data.access_token) {
+    localStorage.setItem("admin_token", data.access_token);
+    // Dispatch event so other components (like Sidebar) can update immediately
+    window.dispatchEvent(new Event("auth-change"));
+  }
+
+  return data as LoginResponse;
+}
+
+export function logout() {
+  localStorage.removeItem("admin_token");
+  window.dispatchEvent(new Event("auth-change"));
 }
 
 /**
@@ -39,6 +84,9 @@ export async function uploadFile(
   try {
     const res = await fetch(`${baseUrl}/upload`, {
       method: "POST",
+      headers: {
+        ...getAuthHeader(),
+      },
       body: formData,
     });
 
@@ -133,6 +181,9 @@ export async function uploadCamelExcel(
   const baseUrl = getBaseUrl();
   const res = await fetch(`${baseUrl}/upload-camel-excel`, {
     method: "POST",
+    headers: {
+      ...getAuthHeader(),
+    },
     body: formData,
   });
   const data = await res.json().catch(() => ({}));
@@ -158,6 +209,9 @@ export async function deleteUpload(
 
   const res = await fetch(`${baseUrl}/upload?${search.toString()}`, {
     method: "DELETE",
+    headers: {
+      ...getAuthHeader(),
+    },
   });
 
   const data = await res.json().catch(() => ({}));

@@ -4,7 +4,9 @@
  * Highlights the active route for clear orientation.
  */
 
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { logout } from "../api/client";
 import styles from "./Sidebar.module.css";
 
 const navItems = [
@@ -25,6 +27,49 @@ interface SidebarProps {
 
 export function Sidebar({ position, onDragStart, onDragEnd }: SidebarProps) {
   const isTop = position === 'top';
+  const [dragEnabled, setDragEnabled] = useState(true);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const checkAuth = () => {
+    const token = localStorage.getItem("admin_token");
+    return !!token && token !== "null" && token !== "undefined";
+  };
+
+  const [isAuthenticated, setIsAuthenticated] = useState(checkAuth);
+
+  // Force a re-render when location changes or custom auth event fires
+  useEffect(() => {
+    const updateAuth = () => setIsAuthenticated(checkAuth());
+    updateAuth(); // Ensure we're up to date
+
+    window.addEventListener("auth-change", updateAuth);
+    // Handle cross-tab login/logout
+    window.addEventListener("storage", updateAuth);
+
+    return () => {
+      window.removeEventListener("auth-change", updateAuth);
+      window.removeEventListener("storage", updateAuth);
+    };
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia("(max-width: 768px), (pointer: coarse)");
+    const syncDragState = () => setDragEnabled(!mediaQuery.matches);
+    syncDragState();
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", syncDragState);
+      return () => mediaQuery.removeEventListener("change", syncDragState);
+    }
+
+    mediaQuery.addListener(syncDragState);
+    return () => mediaQuery.removeListener(syncDragState);
+  }, []);
 
   const handleDragStartInternal = (e: React.DragEvent<HTMLDivElement>) => {
     // Create a collapsed icon style for the drag image instead of the full ghost
@@ -61,8 +106,8 @@ export function Sidebar({ position, onDragStart, onDragEnd }: SidebarProps) {
   return (
     <div
       className={`${styles.sidebarWrapper} ${styles[position]}`}
-      draggable
-      onDragStart={handleDragStartInternal}
+      draggable={dragEnabled}
+      onDragStart={dragEnabled ? handleDragStartInternal : undefined}
       onDragEnd={onDragEnd}
     >
       <nav className={`${styles.sidebar} ${isTop ? styles.sidebarTop : ''}`} aria-label="Main navigation">
@@ -77,19 +122,54 @@ export function Sidebar({ position, onDragStart, onDragEnd }: SidebarProps) {
           </svg>
         </div>
         <ul className={`${styles.navList} ${isTop ? styles.navListTop : ''}`}>
-          {navItems.map(({ to, label }) => (
-            <li key={to}>
-              <NavLink
-                to={to}
-                className={({ isActive }) =>
-                  isActive ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink
-                }
-                end={to === "/" ? true : undefined}
-              >
-                {label}
-              </NavLink>
-            </li>
-          ))}
+          {navItems.map(({ to, label }) => {
+            // Hide admin routes from non-admins
+            if (!isAuthenticated && (to === "/upload" || to === "/files")) {
+              return null;
+            }
+            return (
+              <li key={to}>
+                <NavLink
+                  to={to}
+                  className={({ isActive }) =>
+                    isActive ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink
+                  }
+                  end={to === "/" ? true : undefined}
+                >
+                  {label}
+                </NavLink>
+              </li>
+            );
+          })}
+
+          <div style={{ marginTop: "auto", paddingTop: "2rem" }}>
+            {isAuthenticated ? (
+              <li>
+                <button
+                  type="button"
+                  className={styles.navLink}
+                  style={{ width: "100%", textAlign: "left", background: "none", border: "none", cursor: "pointer", color: "var(--color-danger)" }}
+                  onClick={() => {
+                    logout();
+                    navigate("/dashboard");
+                  }}
+                >
+                  Logout
+                </button>
+              </li>
+            ) : (
+              <li>
+                <NavLink
+                  to="/login"
+                  className={({ isActive }) =>
+                    isActive ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink
+                  }
+                >
+                  Admin Login
+                </NavLink>
+              </li>
+            )}
+          </div>
         </ul>
       </nav>
     </div>

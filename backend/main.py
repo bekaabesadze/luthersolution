@@ -10,7 +10,10 @@ import os
 import io
 from typing import List, Optional
 
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, Query
+from datetime import datetime, timedelta
+import jwt
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, Query, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -38,6 +41,56 @@ app = FastAPI(
     description="Internal API for quarterly bank performance data and dashboards.",
     version="1.0.0",
 )
+
+# -----------------------------------------------------------------------------
+# Authentication
+# -----------------------------------------------------------------------------
+SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "supersecretkey_change_in_production")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # 7 days
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin")
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+def get_current_admin(token: str = Depends(oauth2_scheme)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None or username != "admin":
+            raise credentials_exception
+    except jwt.PyJWTError:
+        raise credentials_exception
+    return username
+
+@app.post("/token")
+def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    if form_data.password != ADMIN_PASSWORD:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    # We ignore the username field from the form and just check the password
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": "admin"}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
 
 # Security headers middleware – helps prevent XSS, clickjacking, MIME sniffing
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -228,6 +281,7 @@ def upload(
     year: int = Form(...),
     quarter: int = Form(..., ge=1, le=4),
     db: Session = Depends(get_db),
+    admin: str = Depends(get_current_admin),
 ) -> UploadResponse:
     """
     Accept an XBRL file containing quarterly bank metrics.
@@ -302,6 +356,7 @@ async def upload_camel_excel(
     file: UploadFile = File(..., description="WSB Performance Dashboard Excel (.xlsx)"),
     bank_name: Optional[str] = Form(None, description="Override bank name from Excel title"),
     db: Session = Depends(get_db),
+    admin: str = Depends(get_current_admin),
 ) -> UploadResponse:
     """
     Parse a WSB Performance Dashboard style Excel and store CAMEL metrics.
@@ -406,6 +461,7 @@ def delete_upload(
     year: int = Query(..., description="Reporting year"),
     quarter: int = Query(..., ge=1, le=4, description="Reporting quarter (1-4)"),
     db: Session = Depends(get_db),
+    admin: str = Depends(get_current_admin),
 ) -> DeleteUploadResponse:
     """
     Delete an uploaded dataset (bank + year + quarter).

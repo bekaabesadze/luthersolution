@@ -84,3 +84,19 @@
   line-height: 1;
   font-weight: 600;
 }
+
+@media (hover: none) and (pointer: coarse) {
+  .expandBtn {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .expandBtn {
+    opacity: 1;
+  }
+
+  .wrapper {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+}
