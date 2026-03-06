@@ -1,0 +1,161 @@
+/* Layout: app shell with header and sidebar + main content */
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.header {
+  min-height: var(--header-height);
+  background: var(--color-bg);
+  color: var(--color-text);
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  isolation: isolate;
+  padding: 0.75rem 1.25rem;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.headerIsland {
+  max-width: 1600px;
+  margin: 0 auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 1.25rem;
+  padding: 0 1.5rem;
+  min-height: calc(var(--header-height) - 1.5rem);
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  box-shadow: var(--shadow-md);
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* When sidebar lives in header, allow flexwrap and extra padding */
+.headerWithNav {
+  min-height: auto;
+}
+
+.headerWithNav .headerIsland {
+  padding: 0.5rem 1.5rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.logo {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+/* Drag drop styles */
+.dragOverActive .headerIsland {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-accent-soft), var(--shadow-md);
+}
+
+.dropOverlay {
+  width: 80px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.dragOverActiveOverlay {
+  background: var(--color-accent-soft);
+  border: 2px dashed var(--color-accent);
+}
+
+.dropIndicator {
+  background: var(--color-accent);
+  color: #fff;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  font-weight: 500;
+  pointer-events: none;
+  white-space: nowrap;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.8;
+    transform: scale(0.95);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0.8;
+    transform: scale(0.95);
+  }
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  flex-direction: row;
+  transition: flex-direction 0.3s ease;
+}
+
+.bodyReverse {
+  flex-direction: row-reverse;
+}
+
+.main {
+  flex: 1;
+  overflow: auto;
+  padding: 1.75rem;
+  max-width: 1600px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.footer {
+  margin-top: auto;
+  padding-top: 1.5rem;
+  padding-bottom: 0.5rem;
+  border-top: 1px solid var(--color-border);
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.footerLink {
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.footerLink:hover {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+.footerSep {
+  margin: 0 0.5rem;
+  color: var(--color-border-strong);
+}
+
+.footerCredit {
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 768px) {
+  .main {
+    padding: 1.25rem;
+  }
+}

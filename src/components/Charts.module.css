@@ -1,0 +1,14 @@
+/* Shared chart layout: used by RevenueBarChart and GrowthLineChart */
+
+.chartWrapper {
+  width: 100%;
+}
+
+.chartWrapper:has(.chartContainer:only-child) {
+  margin-bottom: 0;
+}
+
+.chartContainer {
+  min-height: 300px;
+  width: 100%;
+}

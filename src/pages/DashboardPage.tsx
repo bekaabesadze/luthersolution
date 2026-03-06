@@ -1,0 +1,575 @@
+/**
+ * DashboardPage.tsx
+ * Fetches data from backend GET /banks, GET /quarters, GET /metrics.
+ * Shows summary stats, bar chart, donut charts (revenue share, metric breakdown), line chart, and table.
+ */
+
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { RevenueBarChart } from "../components/RevenueBarChart";
+import { ExpandedRevenueChart } from "../components/ExpandedRevenueChart";
+import { ExpandedRevenueShare } from "../components/ExpandedRevenueShare";
+import { ExpandedMetricBreakdown } from "../components/ExpandedMetricBreakdown";
+import { ExpandedGrowthChart } from "../components/ExpandedGrowthChart";
+import { ExpandedMetricsTable } from "../components/ExpandedMetricsTable";
+import { GrowthLineChart } from "../components/GrowthLineChart";
+import { MetricsTable } from "../components/MetricsTable";
+import { DonutChart } from "../components/DonutChart";
+import { SummaryStats, type SummaryStatKey } from "../components/SummaryStats";
+import { ExpandedSummaryStat } from "../components/ExpandedSummaryStat";
+import { CustomSelect } from "../components/CustomSelect";
+import { getBanks, getQuarters, getMetrics } from "../api/client";
+import {
+  metricsToRevenueByBank,
+  metricsToRevenueShare,
+  metricsToMetricBreakdown,
+  metricsToQuarterlyGrowth,
+  metricsToTableRows,
+  metricsToSummaryStats,
+} from "../utils/metricsTransform";
+import type { MetricsTableRow } from "../components/MetricsTable";
+import type { MetricRow } from "../api/types";
+import styles from "./DashboardPage.module.css";
+
+const emptyRevenue = [] as { bank: string; revenue: number }[];
+const emptyGrowth = [] as { quarter: string; growth: number }[];
+
+export function DashboardPage() {
+  const [banks, setBanks] = useState<string[]>([]);
+  const [quarters, setQuarters] = useState<{ year: number; quarter: number }[]>([]);
+  const [revenueData, setRevenueData] = useState(emptyRevenue);
+  const [growthData, setGrowthData] = useState(emptyGrowth);
+  const [tableData, setTableData] = useState<MetricsTableRow[]>([]);
+  const [summaryStats, setSummaryStats] = useState(metricsToSummaryStats([]));
+  const [revenueShareData, setRevenueShareData] = useState<{ name: string; value: number }[]>([]);
+  const [metricBreakdownData, setMetricBreakdownData] = useState<{ name: string; value: number }[]>([]);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [filterBank, setFilterBank] = useState<string>("");
+  const [filterYear, setFilterYear] = useState<string>("");
+  const [filterQuarter, setFilterQuarter] = useState<string>("");
+  const [growthFromYear, setGrowthFromYear] = useState<string>("");
+  const [growthToYear, setGrowthToYear] = useState<string>("");
+  const [growthBank, setGrowthBank] = useState<string>("");
+  const [expandedChart, setExpandedChart] = useState<"revenue" | "revenueShare" | "metricBreakdown" | "quarterlyGrowth" | "metricsTable" | null>(null);
+  const [expandedSummaryStat, setExpandedSummaryStat] = useState<SummaryStatKey | null>(null);
+  const [rawMetrics, setRawMetrics] = useState<MetricRow[]>([]);
+
+  const loadDashboard = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Connection: fetch filter options and metrics from backend
+      const [banksRes, quartersRes, metricsRes] = await Promise.all([
+        getBanks(),
+        getQuarters(),
+        getMetrics({
+          bank_id: filterBank || undefined,
+          year: filterYear ? Number(filterYear) : undefined,
+          quarter: filterQuarter ? Number(filterQuarter) : undefined,
+        }),
+      ]);
+
+      setBanks(banksRes.banks);
+      setQuarters(quartersRes.quarters);
+
+      const metrics = metricsRes.metrics;
+      setRawMetrics(metrics);
+      if (metrics.length > 0) {
+        setRevenueData(metricsToRevenueByBank(metrics));
+        setGrowthData(metricsToQuarterlyGrowth(metrics));
+        setTableData(metricsToTableRows(metrics));
+        setSummaryStats(metricsToSummaryStats(metrics));
+        setRevenueShareData(metricsToRevenueShare(metrics));
+        setMetricBreakdownData(metricsToMetricBreakdown(metrics));
+      } else {
+        setRevenueData(emptyRevenue);
+        setGrowthData(emptyGrowth);
+        setTableData([]);
+        setSummaryStats(metricsToSummaryStats([]));
+        setRevenueShareData([]);
+        setMetricBreakdownData([]);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load dashboard data");
+      setRevenueData(emptyRevenue);
+      setGrowthData(emptyGrowth);
+      setTableData([]);
+      setSummaryStats(metricsToSummaryStats([]));
+      setRevenueShareData([]);
+      setMetricBreakdownData([]);
+      setRawMetrics([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [filterBank, filterYear, filterQuarter]);
+
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
+
+  const bankOptions = useMemo(
+    () => [{ value: "", label: "All banks" }, ...banks.map((b) => ({ value: b, label: b }))],
+    [banks]
+  );
+  const yearOptions = useMemo(
+    () => [
+      { value: "", label: "All years" },
+      ...Array.from(new Set(quarters.map((q) => q.year)))
+        .sort((a, b) => b - a)
+        .map((y) => ({ value: String(y), label: String(y) })),
+    ],
+    [quarters]
+  );
+  const quarterOptions = useMemo(
+    () => [
+      { value: "", label: "All quarters" },
+      { value: "1", label: "Q1" },
+      { value: "2", label: "Q2" },
+      { value: "3", label: "Q3" },
+      { value: "4", label: "Q4" },
+    ],
+    []
+  );
+
+  const growthYearOptions = useMemo(() => {
+    const years = Array.from(new Set(rawMetrics.map((m) => m.year))).sort((a, b) => a - b);
+    return [
+      { value: "", label: "Any" },
+      ...years.map((y) => ({ value: String(y), label: String(y) })),
+    ];
+  }, [rawMetrics]);
+
+  const growthBankOptions = useMemo(
+    () => [{ value: "", label: "All banks" }, ...banks.map((b) => ({ value: b, label: b }))],
+    [banks]
+  );
+
+  const growthChartData = useMemo(() => {
+    if (!growthBank) return growthData;
+    return metricsToQuarterlyGrowth(rawMetrics.filter((m) => m.bank_id === growthBank));
+  }, [growthBank, growthData, rawMetrics]);
+
+  const parseYearFromQuarterLabel = (label: string): number | null => {
+    const match = label.match(/^(\d{4})-Q[1-4]$/);
+    return match ? Number(match[1]) : null;
+  };
+
+  const filteredGrowthData = useMemo(() => {
+    const from = growthFromYear ? Number(growthFromYear) : null;
+    const to = growthToYear ? Number(growthToYear) : null;
+    return growthChartData.filter((point) => {
+      const year = parseYearFromQuarterLabel(point.quarter);
+      if (year === null) return true;
+      if (from !== null && year < from) return false;
+      if (to !== null && year > to) return false;
+      return true;
+    });
+  }, [growthChartData, growthFromYear, growthToYear]);
+
+  const growthMetricsForExpandedView = useMemo(() => {
+    const scopedMetrics = growthBank
+      ? rawMetrics.filter((m) => m.bank_id === growthBank)
+      : rawMetrics;
+    const from = growthFromYear ? Number(growthFromYear) : null;
+    const to = growthToYear ? Number(growthToYear) : null;
+    if (from === null && to === null) return scopedMetrics;
+    return scopedMetrics.filter((m) => {
+      if (from !== null && m.year < from) return false;
+      if (to !== null && m.year > to) return false;
+      return true;
+    });
+  }, [rawMetrics, growthBank, growthFromYear, growthToYear]);
+
+  return (
+    <div className={styles.page}>
+
+      {/* Connection: filter dropdowns use GET /banks and GET /quarters; changing filters refetches GET /metrics */}
+      <div className={`card ${styles.filtersCard}`}>
+        <div className={styles.filters}>
+          <label className={styles.filterLabel}>
+            Bank
+            <div className={styles.filterSelectWrap}>
+              <CustomSelect
+                value={filterBank}
+                onChange={setFilterBank}
+                options={bankOptions}
+                placeholder="All banks"
+                id="dashboard-bank"
+              />
+            </div>
+          </label>
+          <label className={styles.filterLabel}>
+            Year
+            <div className={styles.filterSelectWrap}>
+              <CustomSelect
+                value={filterYear}
+                onChange={setFilterYear}
+                options={yearOptions}
+                placeholder="All years"
+                id="dashboard-year"
+              />
+            </div>
+          </label>
+          <label className={styles.filterLabel}>
+            Quarter
+            <div className={styles.filterSelectWrap}>
+              <CustomSelect
+                value={filterQuarter}
+                onChange={setFilterQuarter}
+                options={quarterOptions}
+                placeholder="All quarters"
+                id="dashboard-quarter"
+              />
+            </div>
+          </label>
+          <div className={styles.refreshWrap}>
+            <button
+              type="button"
+              className={styles.refreshButton}
+              onClick={() => loadDashboard()}
+              disabled={loading}
+            >
+              {loading ? "Loading…" : "Refresh"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {error && (
+        <div className={styles.errorBanner} role="alert">
+          {error}
+        </div>
+      )}
+
+      {loading && !error && (
+        <p className={styles.loadingText}>Loading dashboard data…</p>
+      )}
+
+      {!loading && !error && revenueData.length === 0 && tableData.length === 0 && (
+        <div className={styles.cardChart}>
+          <div className={styles.cardChartHeader}>
+            <h3 className={styles.cardChartTitle}>No data</h3>
+          </div>
+          <div className={styles.emptyState}>
+            <p>No data for the selected filters.</p>
+            <p className={styles.emptyStateHint}>
+              {filterBank || filterYear || filterQuarter
+                ? "Try changing the bank, year, or quarter filter, or upload XBRL data for the selected period."
+                : "Upload XBRL files from the Upload Data page to see metrics here."}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {!loading && !error && (revenueData.length > 0 || tableData.length > 0) && (
+        <>
+
+          {expandedSummaryStat && (
+            <ExpandedSummaryStat
+              statKey={expandedSummaryStat}
+              statLabel={
+                expandedSummaryStat === "totalRevenue"
+                  ? "Total Revenue"
+                  : expandedSummaryStat === "bankCount"
+                    ? "Banks"
+                    : expandedSummaryStat === "avgGrowth"
+                      ? "Average Growth"
+                      : expandedSummaryStat === "totalDeposits"
+                        ? "Total Deposits"
+                        : expandedSummaryStat === "totalLoans"
+                          ? "Total Loans"
+                          : "Net Profit"
+              }
+              metrics={rawMetrics}
+              onClose={() => setExpandedSummaryStat(null)}
+            />
+          )}
+
+          {expandedChart === "revenue" && (
+            <ExpandedRevenueChart
+              revenueData={revenueData}
+              metrics={rawMetrics}
+              onClose={() => setExpandedChart(null)}
+            />
+          )}
+
+          {expandedChart === "revenueShare" && (
+            <ExpandedRevenueShare
+              revenueShareData={revenueShareData}
+              metrics={rawMetrics}
+              onClose={() => setExpandedChart(null)}
+            />
+          )}
+
+          {expandedChart === "metricBreakdown" && (
+            <ExpandedMetricBreakdown
+              metricBreakdownData={metricBreakdownData}
+              metrics={rawMetrics}
+              onClose={() => setExpandedChart(null)}
+            />
+          )}
+
+          {expandedChart === "quarterlyGrowth" && (
+            <ExpandedGrowthChart
+              growthData={filteredGrowthData}
+              metrics={growthMetricsForExpandedView}
+              onClose={() => setExpandedChart(null)}
+            />
+          )}
+
+          {expandedChart === "metricsTable" && (
+            <ExpandedMetricsTable
+              tableData={tableData}
+              metrics={rawMetrics}
+              banks={banks}
+              onClose={() => setExpandedChart(null)}
+            />
+          )}
+
+          <SummaryStats
+            stats={summaryStats}
+            onExpand={(key) => setExpandedSummaryStat(key)}
+          />
+
+          <div className={styles.chartsRow}>
+            <div
+              className={`${styles.cardChart} ${expandedChart === "revenue" ? styles.cardChartExpanded : ""
+                }`}
+            >
+              <div className={styles.cardChartHeader}>
+                <h3 className={styles.cardChartTitle}>Revenue by bank</h3>
+                <button
+                  type="button"
+                  className={styles.expandBtn}
+                  onClick={() =>
+                    setExpandedChart((prev) => (prev === "revenue" ? null : "revenue"))
+                  }
+                  aria-label={
+                    expandedChart === "revenue"
+                      ? "Collapse chart"
+                      : "Expand chart to full screen"
+                  }
+                  title={
+                    expandedChart === "revenue" ? "Collapse chart" : "Expand chart to full screen"
+                  }
+                >
+                  {expandedChart === "revenue" ? (
+                    <span className={styles.expandIcon}>⤓</span>
+                  ) : (
+                    <span className={styles.expandIcon}>⤢</span>
+                  )}
+                </button>
+              </div>
+              <div className={styles.cardChartBody}>
+                <RevenueBarChart
+                  data={revenueData}
+                  title=""
+                  height={expandedChart === "revenue" ? 480 : 300}
+                />
+              </div>
+            </div>
+            <div className={styles.cardChart}>
+              <div className={styles.cardChartHeader}>
+                <h3 className={styles.cardChartTitle}>Revenue share</h3>
+                <button
+                  type="button"
+                  className={styles.expandBtn}
+                  onClick={() =>
+                    setExpandedChart((prev) =>
+                      prev === "revenueShare" ? null : "revenueShare"
+                    )
+                  }
+                  aria-label={
+                    expandedChart === "revenueShare"
+                      ? "Collapse chart"
+                      : "Expand chart to full screen"
+                  }
+                  title={
+                    expandedChart === "revenueShare"
+                      ? "Collapse chart"
+                      : "Expand chart to full screen"
+                  }
+                >
+                  {expandedChart === "revenueShare" ? (
+                    <span className={styles.expandIcon}>⤓</span>
+                  ) : (
+                    <span className={styles.expandIcon}>⤢</span>
+                  )}
+                </button>
+              </div>
+              <div className={styles.cardChartBody}>
+                <DonutChart
+                  data={revenueShareData}
+                  title=""
+                  valueFormatter={(v) => v.toLocaleString()}
+                  height={280}
+                />
+              </div>
+            </div>
+          </div>
+
+          {metricBreakdownData.length > 0 && (
+            <div className={styles.cardChart}>
+              <div className={styles.cardChartHeader}>
+                <h3 className={styles.cardChartTitle}>Metric breakdown</h3>
+                <button
+                  type="button"
+                  className={styles.expandBtn}
+                  onClick={() =>
+                    setExpandedChart((prev) =>
+                      prev === "metricBreakdown" ? null : "metricBreakdown"
+                    )
+                  }
+                  aria-label={
+                    expandedChart === "metricBreakdown"
+                      ? "Collapse chart"
+                      : "Expand chart to full screen"
+                  }
+                  title={
+                    expandedChart === "metricBreakdown"
+                      ? "Collapse chart"
+                      : "Expand chart to full screen"
+                  }
+                >
+                  {expandedChart === "metricBreakdown" ? (
+                    <span className={styles.expandIcon}>⤓</span>
+                  ) : (
+                    <span className={styles.expandIcon}>⤢</span>
+                  )}
+                </button>
+              </div>
+              <div className={styles.cardChartBody}>
+                <DonutChart
+                  data={metricBreakdownData}
+                  title=""
+                  valueFormatter={(v) => v.toLocaleString()}
+                />
+              </div>
+            </div>
+          )}
+
+          <div className={styles.cardChart}>
+            <div className={styles.cardChartHeader}>
+              <h3 className={styles.cardChartTitle}>Quarterly growth (%)</h3>
+              <div className={styles.growthHeaderActions}>
+                <div className={styles.growthRangeControls}>
+                  <label className={styles.growthRangeField}>
+                    <span>Bank</span>
+                    <div className={styles.growthRangeSelectWrap}>
+                      <CustomSelect
+                        value={growthBank}
+                        onChange={setGrowthBank}
+                        options={growthBankOptions}
+                        placeholder="All banks"
+                        id="growth-bank"
+                      />
+                    </div>
+                  </label>
+                  <label className={styles.growthRangeField}>
+                    <span>From year</span>
+                    <div className={styles.growthRangeSelectWrap}>
+                      <CustomSelect
+                        value={growthFromYear}
+                        onChange={(v) => {
+                          setGrowthFromYear(v);
+                          if (growthToYear && v && Number(v) > Number(growthToYear)) {
+                            setGrowthToYear(v);
+                          }
+                        }}
+                        options={growthYearOptions}
+                        placeholder="Any"
+                        id="growth-from-year"
+                      />
+                    </div>
+                  </label>
+                  <label className={styles.growthRangeField}>
+                    <span>To year</span>
+                    <div className={styles.growthRangeSelectWrap}>
+                      <CustomSelect
+                        value={growthToYear}
+                        onChange={(v) => {
+                          setGrowthToYear(v);
+                          if (growthFromYear && v && Number(v) < Number(growthFromYear)) {
+                            setGrowthFromYear(v);
+                          }
+                        }}
+                        options={growthYearOptions}
+                        placeholder="Any"
+                        id="growth-to-year"
+                      />
+                    </div>
+                  </label>
+                </div>
+                <button
+                  type="button"
+                  className={styles.expandBtn}
+                  onClick={() =>
+                    setExpandedChart((prev) =>
+                      prev === "quarterlyGrowth" ? null : "quarterlyGrowth"
+                    )
+                  }
+                  aria-label={
+                    expandedChart === "quarterlyGrowth"
+                      ? "Collapse chart"
+                      : "Expand chart to full screen"
+                  }
+                  title={
+                    expandedChart === "quarterlyGrowth"
+                      ? "Collapse chart"
+                      : "Expand chart to full screen"
+                  }
+                >
+                  {expandedChart === "quarterlyGrowth" ? (
+                    <span className={styles.expandIcon}>⤓</span>
+                  ) : (
+                    <span className={styles.expandIcon}>⤢</span>
+                  )}
+                </button>
+              </div>
+            </div>
+            <div className={styles.cardChartBody}>
+              <GrowthLineChart data={filteredGrowthData} title="" />
+            </div>
+          </div>
+
+          <div className={styles.cardTable}>
+            <div className={styles.cardChartHeader}>
+              <h3 className={styles.cardChartTitle}>Bank metrics by quarter</h3>
+              <button
+                type="button"
+                className={styles.expandBtn}
+                onClick={() =>
+                  setExpandedChart((prev) =>
+                    prev === "metricsTable" ? null : "metricsTable"
+                  )
+                }
+                aria-label={
+                  expandedChart === "metricsTable"
+                    ? "Collapse table"
+                    : "Expand table to full screen"
+                }
+                title={
+                  expandedChart === "metricsTable"
+                    ? "Collapse table"
+                    : "Expand table to full screen"
+                }
+              >
+                {expandedChart === "metricsTable" ? (
+                  <span className={styles.expandIcon}>⤓</span>
+                ) : (
+                  <span className={styles.expandIcon}>⤢</span>
+                )}
+              </button>
+            </div>
+            <div className={styles.cardChartBody}>
+              <MetricsTable data={tableData} title="" />
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,206 @@
+/* Sidebar: vertical nav with banking-style active state */
+
+.sidebarWrapper {
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+  display: flex;
+  padding: 1rem;
+  transition: all 0.3s ease;
+  cursor: grab;
+}
+
+.sidebarWrapper:active {
+  cursor: grabbing;
+}
+
+
+.sidebar {
+  width: 100%;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 1.5rem;
+  /* Island-like rounded corners */
+  padding: 1.25rem 0;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: calc(var(--header-height) + 1rem);
+  height: calc(100vh - var(--header-height) - 2rem);
+  overflow-y: auto;
+}
+
+.sidebarTop {
+  flex-direction: row;
+  height: auto;
+  position: static;
+  padding: 0;
+  align-items: center;
+  border-radius: 0;
+  overflow: visible;
+  width: auto;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  animation: fadeSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  white-space: nowrap;
+  gap: 0;
+}
+
+@keyframes fadeSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.sidebarWrapper.top {
+  width: auto;
+  padding: 0;
+  flex-shrink: 0;
+  cursor: grab;
+  margin-left: auto;
+}
+
+.sidebarWrapper.top:active {
+  cursor: grabbing;
+}
+
+/* Drag handle */
+.dragHandle {
+  padding: 0.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: var(--color-text-muted);
+  cursor: inherit;
+  transition: color 0.2s;
+}
+
+.dragHandle:hover {
+  color: var(--color-text);
+}
+
+.sidebar:not(.sidebarTop) .dragHandle {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 1rem;
+  margin-inline: 1rem;
+}
+
+.sidebarTop .dragHandle {
+  padding: 0 1rem 0 0.25rem;
+  border-bottom: none;
+  border-right: 1px solid var(--color-border);
+  margin-right: 0.75rem;
+}
+
+/* Nav list */
+.navList {
+  list-style: none;
+  margin: 0;
+  padding: 0 0.75rem;
+}
+
+.navListTop {
+  display: flex;
+  flex-direction: row;
+  padding: 0;
+  gap: 0.25rem;
+}
+
+.navListTop li {
+  margin: 0;
+}
+
+.navListTop .navLink {
+  margin-bottom: 0;
+  padding: 0.5rem 0.875rem;
+  font-size: 0.875rem;
+  border-radius: 0.75rem;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.navListTop .navLink:hover {
+  background: var(--color-bg-subtle);
+}
+
+.navListTop .navLinkActive {
+  border-left: none;
+  border-bottom: none;
+  padding: 0.5rem 0.875rem;
+  border-radius: 0.75rem;
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.navList li {
+  margin: 0;
+}
+
+.navLink {
+  display: block;
+  padding: 0.75rem 1rem;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  border-radius: var(--radius-sm);
+  transition: color 0.2s, background 0.2s;
+  margin-bottom: 2px;
+}
+
+.navLink:hover {
+  color: var(--color-primary);
+  background: var(--color-bg);
+}
+
+.navLinkActive {
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+  border-left: 3px solid var(--color-accent);
+  padding-left: calc(1rem - 3px);
+}
+
+@media (max-width: 768px) {
+  .sidebarWrapper {
+    width: 100%;
+    padding: 0;
+    position: static;
+    display: block;
+  }
+
+  .sidebar {
+    width: 100%;
+    border-radius: 0;
+    border: none;
+    border-bottom: 1px solid var(--color-border);
+    padding: 0.75rem;
+    box-shadow: 0 1px 0 0 var(--color-border);
+    position: static;
+    height: auto;
+  }
+
+  .sidebarHeader {
+    display: none;
+  }
+
+  .navList {
+    display: flex;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+    padding: 0;
+  }
+
+  .navLinkActive {
+    border-left: none;
+    border-bottom: 3px solid var(--color-accent);
+    padding-left: 1rem;
+  }
+}

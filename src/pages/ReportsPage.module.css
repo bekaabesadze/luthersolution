@@ -1,0 +1,184 @@
+.page {
+  max-width: 1200px;
+  animation: pageEnter 0.4s ease-out;
+}
+
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.aboutReport {
+  margin-top: 0.75rem;
+  padding: 0.875rem 1rem;
+  background: var(--color-bg-subtle);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+}
+
+.aboutReport strong {
+  color: var(--color-text);
+}
+
+.filtersCard {
+  margin-bottom: 1.5rem;
+}
+
+.filters {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.filterLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-weight: 500;
+  color: var(--color-text);
+  font-size: 0.875rem;
+}
+
+.filterSelectWrap {
+  min-width: 180px;
+}
+
+.actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.refreshButton {
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: white;
+  background: var(--color-accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+  white-space: nowrap;
+}
+
+.refreshButton:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+  transform: translateY(-1px);
+}
+
+.refreshButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.downloadButton {
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--color-accent);
+  background: transparent;
+  border: 2px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
+  white-space: nowrap;
+}
+
+.downloadButton:hover:not(:disabled) {
+  background: var(--color-accent);
+  color: white;
+  transform: translateY(-1px);
+}
+
+.downloadButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.errorBanner {
+  padding: 0.875rem 1.25rem;
+  margin-bottom: 1rem;
+  background: var(--color-error-soft);
+  color: var(--color-error);
+  border-radius: var(--radius-sm);
+  font-size: 0.9375rem;
+  border: 1px solid rgba(185, 28, 28, 0.15);
+}
+
+.loadingText {
+  color: var(--color-text-muted);
+  margin-bottom: 1rem;
+  font-size: 0.9375rem;
+  padding: 1rem 0;
+}
+
+.emptyState {
+  padding: 2.5rem 1.75rem;
+  text-align: center;
+  color: var(--color-text);
+  font-size: 1rem;
+}
+
+.emptyStateHint {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.cardChart {
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--color-border);
+  padding: 0;
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+}
+
+.cardChartHeader {
+  padding: 1.25rem 1.75rem 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+  background: linear-gradient(to bottom, var(--color-bg-subtle) 0%, transparent 100%);
+}
+
+.cardChartTitle {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.cardChartBody {
+  padding: 1.25rem 1.75rem 1.5rem;
+}
+
+.cardTable {
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--color-border);
+  padding: 0;
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+}
+
+.cardTable .cardChartHeader {
+  padding: 1.25rem 1.75rem 0.75rem;
+}
+
+.cardTable .cardChartBody {
+  padding: 0 1.75rem 1.5rem 1.25rem;
+}

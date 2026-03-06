@@ -1,0 +1,145 @@
+.wrapper {
+  margin-bottom: 1.25rem;
+}
+
+.metaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem;
+}
+
+.metaChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+}
+
+.scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-elevated);
+}
+
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.9375rem;
+}
+
+.table th,
+.table td {
+  padding: 0.8rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.table th {
+  font-weight: 600;
+  color: var(--color-text);
+  background: linear-gradient(180deg, var(--color-bg-subtle), var(--color-surface));
+  white-space: nowrap;
+  border-bottom: 1px solid var(--color-border-strong);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.table td {
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+
+.table tbody tr:hover {
+  transform: translateY(-1px);
+}
+
+.table tbody tr:nth-child(even) td {
+  background: var(--color-bg-subtle);
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.bankCell {
+  font-weight: 600;
+}
+
+.periodBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.12);
+  color: var(--color-text);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.growthUp,
+.growthDown {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 72px;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.8125rem;
+}
+
+.growthUp {
+  color: var(--color-success);
+  background: var(--color-success-soft);
+}
+
+.growthDown {
+  color: var(--color-error);
+  background: var(--color-error-soft);
+}
+
+.empty {
+  color: var(--color-text-muted);
+  font-style: italic;
+  text-align: center;
+  padding: 2rem !important;
+}
+
+.actions {
+  margin-top: 0.75rem;
+  display: flex;
+  justify-content: center;
+}
+
+.toggleButton {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-radius: 999px;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.toggleButton:hover {
+  background: var(--color-bg-subtle);
+  border-color: var(--color-border-strong);
+}

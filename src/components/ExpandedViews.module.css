@@ -1,0 +1,304 @@
+/* Shared styles for expanded views */
+
+.expandedBackdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  animation: backdropFadeIn 0.3s ease-out;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+@keyframes backdropFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.expandedCard {
+  position: fixed;
+  top: 2rem;
+  left: 2rem;
+  right: 2rem;
+  bottom: 2rem;
+  z-index: 1000;
+  max-width: none;
+  margin: 0;
+  padding: 1.5rem 1.75rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  animation: cardExpandIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+}
+
+@keyframes cardExpandIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.expandedCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.expandedCardTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.expandedCardCloseBtn {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-elevated);
+  color: var(--color-text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-md);
+  transition: all 0.2s ease;
+  border: 1px solid var(--color-border);
+}
+
+.expandedCardCloseBtn:hover {
+  background: var(--color-bg-subtle);
+  transform: scale(1.05);
+}
+
+.expandedCardCloseBtn:active {
+  transform: scale(0.95);
+}
+
+.expandedCardBody {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.expandedCardTabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.expandedCardTab {
+  padding: 0.75rem 1.25rem;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--color-text-muted);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: -1px;
+}
+
+.expandedCardTab:hover {
+  color: var(--color-text);
+}
+
+.expandedCardTabActive {
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
+}
+
+.statsPanel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: var(--color-surface-elevated);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+  animation: statsFadeIn 0.4s ease-out 0.15s both;
+}
+
+@keyframes statsFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.statLabel {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.statValue {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.bankBreakdownTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.bankBreakdownTable th,
+.bankBreakdownTable td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.bankBreakdownTable th {
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  background: var(--color-bg-subtle);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.bankBreakdownTable td {
+  color: var(--color-text);
+}
+
+.bankBreakdownTable tr:hover {
+  background: var(--color-bg-subtle);
+}
+
+.bankBreakdownTable .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.exportButton {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-accent);
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.exportButton:hover {
+  background: rgba(87, 155, 252, 0.1);
+  border-color: var(--color-accent);
+}
+
+.comparisonPanel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: var(--color-bg-subtle);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+
+.expandedFilters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.expandedFilterField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.expandedFilterSelect {
+  min-width: 180px;
+}
+
+.comparisonItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.comparisonLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.comparisonValue {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.comparisonChange {
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.comparisonChangePositive {
+  color: var(--color-success);
+}
+
+.comparisonChangeNegative {
+  color: var(--color-error);
+}

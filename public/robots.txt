@@ -1,0 +1,6 @@
+# Allow all crawlers; adjust if this is an internal-only app and you want to block indexing.
+User-agent: *
+Allow: /
+
+# Optional: block sensitive paths if you add them later
+# Disallow: /api/
