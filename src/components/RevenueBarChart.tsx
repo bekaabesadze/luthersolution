@@ -19,6 +19,7 @@ export interface RevenueBarChartProps {
   data: { bank: string; revenue: number }[];
   title?: string;
   height?: number;
+  axisFontSize?: number;
 }
 
 const formatRevenue = (v: number) =>
@@ -38,6 +39,7 @@ export function RevenueBarChart({
   data,
   title = "Revenue by bank",
   height = 300,
+  axisFontSize = 13,
 }: RevenueBarChartProps) {
   return (
     <div className={styles.chartWrapper}>
@@ -48,13 +50,13 @@ export function RevenueBarChart({
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
             <XAxis
               dataKey="bank"
-              tick={{ fontSize: 13, fill: "var(--color-text-muted)", fontWeight: 500 }}
+              tick={{ fontSize: axisFontSize, fill: "var(--color-text-muted)", fontWeight: 600 }}
               stroke="var(--color-border)"
               axisLine={{ stroke: "var(--color-border)" }}
               tickLine={false}
             />
             <YAxis
-              tick={{ fontSize: 12, fill: "var(--color-text-muted)" }}
+              tick={{ fontSize: Math.max(10, axisFontSize - 1), fill: "var(--color-text-muted)", fontWeight: 600 }}
               stroke="transparent"
               tickLine={false}
               axisLine={false}

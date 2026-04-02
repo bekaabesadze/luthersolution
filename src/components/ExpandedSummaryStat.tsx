@@ -8,6 +8,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { ExpandedCard } from "./ExpandedCard";
 import { CustomSelect } from "./CustomSelect";
 import type { MetricRow } from "../api/types";
+import { getMetricById, metricRegistry, type MetricDefinition } from "../config/metricRegistry";
 import {
   metricsToBankBreakdown,
   metricsToHistoricalTrends,
@@ -15,7 +16,7 @@ import {
 } from "../utils/metricsTransform";
 import styles from "./ExpandedViews.module.css";
 
-export type SummaryStatKey = "totalRevenue" | "totalDeposits" | "totalLoans" | "netProfit" | "avgGrowth" | "bankCount";
+export type SummaryStatKey = "totalRevenue" | "totalDeposits" | "totalLoans" | "netProfit" | "avgGrowth" | "bankCount" | "avgRevenue" | "avgProfit";
 
 export interface ExpandedSummaryStatProps {
   statKey: SummaryStatKey;
@@ -24,41 +25,49 @@ export interface ExpandedSummaryStatProps {
   onClose: () => void;
 }
 
-const isRevenue = (name: string) => {
-  const n = name.toLowerCase();
-  return n === "revenue" || n === "value" || n === "revenues" || n === "totalrevenue" || n === "operatingrevenue" || n === "netrevenue";
-};
-
-const isGrowth = (name: string) => {
-  const n = name.toLowerCase().replace(/[_\s]+/g, " ").trim();
-  return n === "growth" || n === "growth pct" || n === "growth %" || n.includes("growth");
-};
-
-const getMetricMatcher = (key: SummaryStatKey): ((name: string) => boolean) => {
+const defaultMetricIdForStatKey = (key: SummaryStatKey): string => {
   switch (key) {
     case "totalRevenue":
-      return isRevenue;
+      return "revenue";
     case "totalDeposits":
-      return (n) => n.toLowerCase().includes("deposit");
+      return "deposits";
     case "totalLoans":
-      return (n) => n.toLowerCase().includes("loan") && !n.toLowerCase().includes("growth");
+      return "loans";
     case "netProfit":
-      return (n) => n.toLowerCase().includes("profit") || n.toLowerCase().includes("net income");
+      return "netProfit";
     case "avgGrowth":
-      return isGrowth;
+      return "growthPct";
+    case "avgRevenue":
+      return "revenue";
+    case "avgProfit":
+      return "netProfit";
     case "bankCount":
-      return () => false; // Special case, handled separately
+      return "revenue";
     default:
-      return () => false;
+      return "revenue";
   }
 };
 
-const formatValue = (v: number) => v.toLocaleString(undefined, { maximumFractionDigits: 0 });
+const formatMetricValue = (v: number, metric: MetricDefinition) => {
+  if (!Number.isFinite(v)) return "—";
+  if (metric.format === "percent") return `${v.toFixed(1)}%`;
+  return v.toLocaleString(undefined, { maximumFractionDigits: 0 });
+};
 
 export function ExpandedSummaryStat({ statKey, statLabel, metrics, onClose }: ExpandedSummaryStatProps) {
   const [selectedBank, setSelectedBank] = useState<string>("");
   const [selectedYear, setSelectedYear] = useState<string>("");
-  const metricMatcher = getMetricMatcher(statKey);
+  const [selectedMetricId, setSelectedMetricId] = useState<string>(() => defaultMetricIdForStatKey(statKey));
+
+  useEffect(() => {
+    setSelectedMetricId(defaultMetricIdForStatKey(statKey));
+  }, [statKey]);
+
+  const selectedMetric = useMemo(() => {
+    return getMetricById(selectedMetricId) ?? getMetricById(defaultMetricIdForStatKey(statKey)) ?? metricRegistry[0];
+  }, [selectedMetricId, statKey]);
+
+  const metricMatcher = selectedMetric.matcher;
   const bankOptions = useMemo(
     () => [
       { value: "", label: "All banks" },
@@ -98,17 +107,18 @@ export function ExpandedSummaryStat({ statKey, statLabel, metrics, onClose }: Ex
   );
 
   const analysisMetrics = useMemo(() => {
-    if (statKey !== "avgGrowth") return filteredMetrics;
+    if (selectedMetric.id !== "growthPct") return filteredMetrics;
 
     const normalizeGrowthPercent = (value: number) => (Math.abs(value) <= 1 ? value * 100 : value);
     const explicitGrowth = filteredMetrics
-      .filter((m) => isGrowth(m.metric_name || ""))
+      .filter((m) => selectedMetric.matcher(m.metric_name || ""))
       .map((m) => ({ ...m, value: normalizeGrowthPercent(m.value) }));
     if (explicitGrowth.length > 0) return explicitGrowth;
 
+    const revenueMetric = getMetricById("revenue");
     const revenueByBank: Record<string, Array<{ year: number; quarter: number; revenue: number }>> = {};
     for (const m of filteredMetrics) {
-      if (!isRevenue(m.metric_name || "")) continue;
+      if (!revenueMetric?.matcher(m.metric_name || "")) continue;
       if (!revenueByBank[m.bank_id]) revenueByBank[m.bank_id] = [];
       revenueByBank[m.bank_id].push({ year: m.year, quarter: m.quarter, revenue: m.value });
     }
@@ -123,9 +133,7 @@ export function ExpandedSummaryStat({ statKey, statLabel, metrics, onClose }: Ex
         else byPeriod.set(key, { ...p });
       });
 
-      const ordered = Array.from(byPeriod.values()).sort(
-        (a, b) => a.year - b.year || a.quarter - b.quarter
-      );
+      const ordered = Array.from(byPeriod.values()).sort((a, b) => a.year - b.year || a.quarter - b.quarter);
       for (let i = 1; i < ordered.length; i += 1) {
         const prev = ordered[i - 1].revenue;
         const curr = ordered[i].revenue;
@@ -142,7 +150,7 @@ export function ExpandedSummaryStat({ statKey, statLabel, metrics, onClose }: Ex
     });
 
     return derivedGrowth;
-  }, [filteredMetrics, statKey]);
+  }, [filteredMetrics, selectedMetric]);
 
   const breakdown = useMemo(() => {
     if (statKey === "bankCount") {
@@ -252,6 +260,20 @@ export function ExpandedSummaryStat({ statKey, statLabel, metrics, onClose }: Ex
     <ExpandedCard title={`${statLabel} - Detailed Analysis`} onClose={onClose}>
       <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
         <div className={styles.expandedFilters}>
+          {statKey !== "bankCount" && (
+            <label className={styles.expandedFilterField}>
+              <span>Compare metric</span>
+              <div className={styles.expandedFilterSelect}>
+                <CustomSelect
+                  value={selectedMetricId}
+                  onChange={setSelectedMetricId}
+                  options={metricRegistry.map((m) => ({ value: m.id, label: m.label }))}
+                  placeholder="Select metric"
+                  id={`expanded-metric-${statKey}`}
+                />
+              </div>
+            </label>
+          )}
           <label className={styles.expandedFilterField}>
             <span>Bank</span>
             <div className={styles.expandedFilterSelect}>
@@ -282,15 +304,21 @@ export function ExpandedSummaryStat({ statKey, statLabel, metrics, onClose }: Ex
         <div className={styles.comparisonPanel}>
           <div className={styles.comparisonItem}>
             <div className={styles.comparisonLabel}>Current Period</div>
-            <div className={styles.comparisonValue}>{formatValue(comparison.current)}</div>
+            <div className={styles.comparisonValue}>
+              {statKey === "bankCount" ? comparison.current : formatMetricValue(comparison.current, selectedMetric)}
+            </div>
           </div>
           <div className={styles.comparisonItem}>
             <div className={styles.comparisonLabel}>Previous Period</div>
-            <div className={styles.comparisonValue}>{formatValue(comparison.previous)}</div>
+            <div className={styles.comparisonValue}>
+              {statKey === "bankCount" ? comparison.previous : formatMetricValue(comparison.previous, selectedMetric)}
+            </div>
           </div>
           <div className={styles.comparisonItem}>
             <div className={styles.comparisonLabel}>Change</div>
-            <div className={styles.comparisonValue}>{formatValue(comparison.change)}</div>
+            <div className={styles.comparisonValue}>
+              {statKey === "bankCount" ? comparison.change : formatMetricValue(comparison.change, selectedMetric)}
+            </div>
             <div
               className={`${styles.comparisonChange} ${comparison.changePercent >= 0
                   ? styles.comparisonChangePositive
@@ -321,10 +349,12 @@ export function ExpandedSummaryStat({ statKey, statLabel, metrics, onClose }: Ex
                   <YAxis
                     tick={{ fontSize: 12, fill: "var(--color-text-muted)" }}
                     stroke="transparent"
-                    tickFormatter={formatValue}
+                    tickFormatter={(v: number) => (statKey === "bankCount" ? String(v) : formatMetricValue(v, selectedMetric))}
                   />
                   <Tooltip
-                    formatter={(value: number) => formatValue(value)}
+                    formatter={(value: number) =>
+                      statKey === "bankCount" ? String(value) : formatMetricValue(value, selectedMetric)
+                    }
                     contentStyle={{
                       borderRadius: "var(--radius-sm)",
                       border: "1px solid var(--color-border)",
@@ -403,7 +433,9 @@ export function ExpandedSummaryStat({ statKey, statLabel, metrics, onClose }: Ex
                     <tr key={item.bank}>
                       <td>{item.rank}</td>
                       <td>{item.bank}</td>
-                      <td className={styles.num}>{formatValue(item.value)}</td>
+                      <td className={styles.num}>
+                        {statKey === "bankCount" ? String(item.value) : formatMetricValue(item.value, selectedMetric)}
+                      </td>
                       <td className={styles.num}>{item.percentage.toFixed(2)}%</td>
                     </tr>
                   ))

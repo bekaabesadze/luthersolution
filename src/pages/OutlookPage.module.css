@@ -1,0 +1,632 @@
+.page {
+  max-width: 1260px;
+  animation: pageEnter 0.38s ease-out;
+}
+
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.filtersCard {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-md);
+  overflow: visible;
+  backdrop-filter: blur(18px);
+}
+
+.filterGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem 1.15rem;
+  align-items: end;
+}
+
+.filterLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.filterSelectWrap {
+  min-width: 0;
+}
+
+.peerPickerWrap {
+  position: relative;
+}
+
+.peerPickerTrigger {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.82rem 1rem;
+  border-radius: 0.95rem;
+  border: 1px solid var(--color-border);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-surface-elevated) 82%, transparent), var(--color-surface));
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.18s ease, transform 0.14s ease, box-shadow 0.18s ease;
+}
+
+.peerPickerTrigger:hover {
+  border-color: var(--color-border-strong);
+  transform: translateY(-1px);
+}
+
+.peerPickerTriggerOpen {
+  border-color: color-mix(in srgb, var(--color-accent) 68%, var(--color-border));
+  box-shadow: 0 0 0 3px rgba(87, 155, 252, 0.12);
+}
+
+.peerPickerChevron {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translateY(-1px);
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+.peerPickerPanel {
+  position: absolute;
+  top: calc(100% + 0.6rem);
+  left: 0;
+  right: 0;
+  padding: 0.9rem;
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--color-surface) 94%, black 6%);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-lg);
+}
+
+.peerPickerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.8rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.peerPickerClose {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.peerPickerList {
+  display: grid;
+  gap: 0.45rem;
+  max-height: 16rem;
+  overflow: auto;
+}
+
+.peerOption {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.72rem 0.8rem;
+  border-radius: 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--color-border) 88%, transparent);
+  background: color-mix(in srgb, var(--color-surface-elevated) 82%, transparent);
+  cursor: pointer;
+  font-size: 0.92rem;
+}
+
+.peerOption input {
+  accent-color: var(--color-accent);
+}
+
+.peerPickerHint {
+  margin: 0.8rem 0 0;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.peerPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.peerPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(87, 155, 252, 0.35);
+  background: rgba(87, 155, 252, 0.12);
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.peerPillClose {
+  font-size: 1rem;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+.qualityRow {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 75%, transparent);
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.qualityBadge {
+  padding: 0.28rem 0.58rem;
+  border-radius: 999px;
+  background: rgba(87, 155, 252, 0.12);
+  color: var(--color-accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.qualityCopy {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 0.91rem;
+  flex: 1 1 22rem;
+}
+
+.qualityTimestamp {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.errorBanner,
+.emptyStateCard,
+.loadingCard,
+.chartCard,
+.leaderboardCard,
+.matrixCard,
+.eligibilityCard {
+  background: var(--color-surface);
+  border-radius: 1.15rem;
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+}
+
+.errorBanner {
+  padding: 1rem 1.1rem;
+  margin-bottom: 1.25rem;
+  background: var(--color-error-soft);
+  color: var(--color-error);
+}
+
+.emptyStateCard,
+.loadingCard {
+  padding: 1.4rem 1.5rem;
+}
+
+.emptyStateTitle {
+  margin: 0 0 0.4rem;
+  font-size: 1.05rem;
+}
+
+.emptyStateCopy,
+.loadingCopy,
+.emptyPanelCopy {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.loadingCard {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.loadingPulse {
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 999px;
+  background: var(--color-accent);
+  box-shadow: 0 0 0 0 rgba(87, 155, 252, 0.5);
+  animation: pulse 1.2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(87, 155, 252, 0.48);
+  }
+
+  100% {
+    box-shadow: 0 0 0 16px rgba(87, 155, 252, 0);
+  }
+}
+
+.runwayStrip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.45rem;
+}
+
+.runwayCard {
+  position: relative;
+  padding: 1rem 1rem 1.05rem;
+  border-radius: 1.05rem;
+  border: 1px solid color-mix(in srgb, var(--color-border) 88%, transparent);
+  background:
+    linear-gradient(180deg, rgba(87, 155, 252, 0.12), transparent 42%),
+    linear-gradient(180deg, color-mix(in srgb, var(--color-surface-elevated) 88%, transparent), var(--color-surface));
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.runwayTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.runwayEyebrow {
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+
+.runwayPeriod {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.runwayMetricList {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.runwayMetric {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.9rem;
+  font-size: 0.84rem;
+}
+
+.runwayMetric span {
+  color: var(--color-text-muted);
+}
+
+.runwayMetric strong {
+  color: var(--color-text);
+  font-size: 0.92rem;
+}
+
+.runwayStatus {
+  margin-top: 0.9rem;
+  display: inline-flex;
+  padding: 0.22rem 0.52rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.runwayStatusReady {
+  background: rgba(0, 200, 117, 0.14);
+  color: var(--color-success);
+}
+
+.runwayStatusPartial {
+  background: rgba(245, 158, 11, 0.14);
+  color: #f59e0b;
+}
+
+.runwayStatusUnavailable {
+  background: var(--color-error-soft);
+  color: var(--color-error);
+}
+
+.analyticsGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 2.1fr) minmax(18rem, 0.95fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.chartCard,
+.leaderboardCard,
+.matrixCard,
+.eligibilityCard {
+  overflow: hidden;
+}
+
+.cardHeader {
+  padding: 1.1rem 1.2rem 0.8rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 1.02rem;
+  letter-spacing: -0.02em;
+}
+
+.cardSubtitle {
+  margin: 0.35rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.cardMeta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
+.metaPill {
+  padding: 0.28rem 0.56rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 78%, transparent);
+  color: var(--color-text-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.leaderboardRows {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.95rem 1rem 1rem;
+}
+
+.leaderboardRow {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) auto;
+  gap: 0.8rem;
+  align-items: center;
+  padding: 0.8rem 0.85rem;
+  border-radius: 0.95rem;
+  border: 1px solid color-mix(in srgb, var(--color-border) 86%, transparent);
+  background: color-mix(in srgb, var(--color-surface-elevated) 75%, transparent);
+}
+
+.leaderboardRowTop {
+  border-color: rgba(87, 155, 252, 0.42);
+  background: rgba(87, 155, 252, 0.09);
+}
+
+.leaderboardRowMuted {
+  opacity: 0.72;
+}
+
+.leaderboardRank {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-subtle);
+  color: var(--color-text);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.leaderboardBank {
+  min-width: 0;
+  display: grid;
+  gap: 0.16rem;
+}
+
+.leaderboardBankName {
+  color: var(--color-text);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.leaderboardStatus {
+  font-size: 0.74rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.leaderboardValueBlock {
+  text-align: right;
+  display: grid;
+  gap: 0.16rem;
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.leaderboardDelta {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.matrixCard,
+.eligibilityCard {
+  margin-bottom: 1rem;
+}
+
+.tableWrap {
+  overflow: auto;
+}
+
+.matrixTable {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: collapse;
+}
+
+.matrixTable th,
+.matrixTable td {
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 86%, transparent);
+  text-align: left;
+  font-size: 0.88rem;
+  vertical-align: top;
+}
+
+.matrixTable th {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.matrixMetricCell {
+  display: grid;
+  gap: 0.22rem;
+}
+
+.matrixMetricCell strong {
+  color: var(--color-text);
+}
+
+.matrixMetricCell span {
+  color: var(--color-text-muted);
+  font-size: 0.76rem;
+}
+
+.matrixRowMuted {
+  opacity: 0.72;
+}
+
+.peerDeltaCell {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.peerDeltaCell strong {
+  color: var(--color-text);
+}
+
+.peerDeltaCell span {
+  color: var(--color-text-muted);
+  font-size: 0.76rem;
+}
+
+.eligibilityGroups {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem 1.2rem 1.2rem;
+}
+
+.eligibilityGroup {
+  border: 1px solid color-mix(in srgb, var(--color-border) 84%, transparent);
+  border-radius: 1rem;
+  padding: 0.9rem 1rem;
+  background: color-mix(in srgb, var(--color-surface-elevated) 78%, transparent);
+}
+
+.eligibilityBank {
+  margin: 0 0 0.7rem;
+  font-size: 0.92rem;
+}
+
+.eligibilityList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.72rem;
+}
+
+.eligibilityItem {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.eligibilityItem strong {
+  color: var(--color-text);
+  font-size: 0.86rem;
+}
+
+.eligibilityItem span {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 1080px) {
+  .filterGrid,
+  .runwayStrip,
+  .analyticsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .cardMeta {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 768px) {
+  .filtersCard {
+    position: static;
+  }
+
+  .qualityRow {
+    align-items: flex-start;
+  }
+
+  .qualityTimestamp {
+    white-space: normal;
+  }
+
+  .cardHeader {
+    padding: 1rem 1rem 0.75rem;
+    flex-direction: column;
+  }
+
+  .leaderboardRows,
+  .eligibilityGroups {
+    padding-inline: 0.9rem;
+  }
+
+  .matrixTable th,
+  .matrixTable td {
+    padding: 0.8rem 0.85rem;
+  }
+}

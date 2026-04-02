@@ -17,6 +17,9 @@ export interface DonutChartProps {
   height?: number;
   /** When true, uses longer animation for pie segments "coming together" effect. */
   isExpanded?: boolean;
+  /** Slice label style. */
+  sliceLabelMode?: "namePercent" | "percentOnly" | "none";
+  legendFontSize?: number;
 }
 
 const DEFAULT_COLORS = [
@@ -47,6 +50,8 @@ export function DonutChart({
   colors = DEFAULT_COLORS,
   height = 280,
   isExpanded = false,
+  sliceLabelMode = "namePercent",
+  legendFontSize = 12,
 }: DonutChartProps) {
   const total = data.reduce((s, d) => s + d.value, 0);
 
@@ -71,7 +76,7 @@ export function DonutChart({
         <div
           className={styles.chartContainer}
           style={{
-            minHeight: height,
+            height,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -87,7 +92,7 @@ export function DonutChart({
   return (
     <div className={styles.chartWrapper}>
       {title ? <h3 className="card-title">{title}</h3> : null}
-      <div className={styles.chartContainer} style={{ minHeight: height }}>
+      <div className={styles.chartContainer} style={{ height }}>
         <ResponsiveContainer width="100%" height={height}>
           <PieChart margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
             <Pie
@@ -102,8 +107,14 @@ export function DonutChart({
               animationBegin={isExpanded ? 200 : 0}
               animationDuration={isExpanded ? 900 : 400}
               animationEasing="ease-out"
-              label={({ name, percent }) => (percent >= 0.06 ? `${name}: ${(percent * 100).toFixed(0)}%` : "")}
-              labelLine={{ stroke: "var(--color-border)", strokeWidth: 1 }}
+              label={({ name, percent }) => {
+                if (sliceLabelMode === "none") return "";
+                if (sliceLabelMode === "percentOnly") {
+                  return percent >= 0.08 ? `${(percent * 100).toFixed(0)}%` : "";
+                }
+                return percent >= 0.06 ? `${name}: ${(percent * 100).toFixed(0)}%` : "";
+              }}
+              labelLine={sliceLabelMode === "namePercent" ? { stroke: "var(--color-border)", strokeWidth: 1 } : false}
             >
               {data.map((_, i) => (
                 <Cell key={i} fill={colors[i % colors.length]} stroke="var(--color-surface)" strokeWidth={2} />
@@ -119,7 +130,7 @@ export function DonutChart({
                 const pct = d && total > 0 ? ((d.value / total) * 100).toFixed(1) : "0";
                 return `${value} (${pct}%)`;
               }}
-              wrapperStyle={{ fontSize: "12px" }}
+              wrapperStyle={{ fontSize: `${legendFontSize}px` }}
               iconType="circle"
               iconSize={8}
             />

@@ -4,7 +4,7 @@
  */
 
 import { useMemo } from "react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from "recharts";
 import { ExpandedCard } from "./ExpandedCard";
 import type { MetricRow } from "../api/types";
 import { metricsToGrowthRankings } from "../utils/metricsTransform";
@@ -147,11 +147,21 @@ export function ExpandedGrowthChart({ growthData, metrics, onClose }: ExpandedGr
                     stroke="transparent"
                     tickFormatter={(v) => `${v}%`}
                     width={50}
+                    domain={[(min: number) => Math.max(-100, Math.min(min, 0)), "auto"]}
                   />
                   <Tooltip
                     formatter={(value: number) => (value !== null ? [`${value.toFixed(1)}%`, ""] : ["—", ""])}
                     contentStyle={tooltipContentStyle}
                     labelStyle={{ color: "var(--color-text)", fontWeight: 600 }}
+                  />
+                  <ReferenceLine
+                    y={0}
+                    stroke="var(--color-text-muted)"
+                    strokeOpacity={0.55}
+                    strokeDasharray="3 3"
+                    strokeWidth={1.5}
+                    ifOverflow="extendDomain"
+                    isFront
                   />
                   <Legend />
                   {bankTrendData.length > 0 ? (

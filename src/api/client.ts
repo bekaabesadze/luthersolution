@@ -1,7 +1,7 @@
 /**
  * api/client.ts
  * Central HTTP client for the FastAPI backend. Uses fetch for all requests.
- * Base URL is read from VITE_API_BASE_URL (default http://localhost:8000).
+ * Base URL: VITE_API_BASE_URL, else production build uses the Render API host, else localhost.
  * All functions throw on network error or non-2xx response; callers handle loading and error states.
  */
 
@@ -13,10 +13,17 @@ import type {
   UploadResponse,
   DeleteUploadResponse,
   LoginResponse,
+  ForecastRequest,
+  ForecastResponse,
 } from "./types";
 
+const PRODUCTION_API_BASE = "https://luthersolution.onrender.com";
+
 function getBaseUrl(): string {
-  return import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+  const fromEnv = import.meta.env.VITE_API_BASE_URL;
+  if (fromEnv) return fromEnv;
+  if (import.meta.env.PROD) return PRODUCTION_API_BASE;
+  return "http://localhost:8001";
 }
 
 function getAuthHeader(): { Authorization: string } | {} {
@@ -219,6 +226,32 @@ export async function deleteUpload(
     throw new Error(formatErrorDetail(data.detail) || `Delete failed (${res.status})`);
   }
   return data as DeleteUploadResponse;
+}
+
+/**
+ * POST /forecast: build a predictive outlook for a primary bank and optional peers.
+ */
+export async function getForecast(payload: ForecastRequest): Promise<ForecastResponse> {
+  const res = await fetch(`${getBaseUrl()}/forecast`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeader(),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    if (res.status === 404) {
+      throw new Error(
+        "The predictive outlook API is not available on the deployed backend yet. Redeploy the backend service so /forecast exists."
+      );
+    }
+    throw new Error(formatErrorDetail(data.detail) || `Failed to load forecast (${res.status})`);
+  }
+
+  return data as ForecastResponse;
 }
 
 /** Normalize backend error detail (string or array of { msg } from validation). */

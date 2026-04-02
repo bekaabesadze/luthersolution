@@ -4,14 +4,14 @@
  * Highlights the active route for clear orientation.
  */
 
-import { NavLink, useNavigate, useLocation } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { logout } from "../api/client";
 import styles from "./Sidebar.module.css";
 
 const navItems = [
   { to: "/upload", label: "Upload Data" },
   { to: "/dashboard", label: "Dashboard" },
+  { to: "/outlook", label: "Outlook" },
   { to: "/camel", label: "CAMEL" },
   { to: "/files", label: "Files" },
   { to: "/reports", label: "Reports" },
@@ -28,7 +28,6 @@ interface SidebarProps {
 export function Sidebar({ position, onDragStart, onDragEnd }: SidebarProps) {
   const isTop = position === 'top';
   const [dragEnabled, setDragEnabled] = useState(true);
-  const navigate = useNavigate();
   const location = useLocation();
 
   const checkAuth = () => {
@@ -38,15 +37,11 @@ export function Sidebar({ position, onDragStart, onDragEnd }: SidebarProps) {
 
   const [isAuthenticated, setIsAuthenticated] = useState(checkAuth);
 
-  // Force a re-render when location changes or custom auth event fires
   useEffect(() => {
     const updateAuth = () => setIsAuthenticated(checkAuth());
-    updateAuth(); // Ensure we're up to date
-
+    updateAuth();
     window.addEventListener("auth-change", updateAuth);
-    // Handle cross-tab login/logout
     window.addEventListener("storage", updateAuth);
-
     return () => {
       window.removeEventListener("auth-change", updateAuth);
       window.removeEventListener("storage", updateAuth);
@@ -112,19 +107,19 @@ export function Sidebar({ position, onDragStart, onDragEnd }: SidebarProps) {
     >
       <nav className={`${styles.sidebar} ${isTop ? styles.sidebarTop : ''}`} aria-label="Main navigation">
         <div className={styles.dragHandle} title="Drag to move sidebar">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="5 9 2 12 5 15"></polyline>
-            <polyline points="9 5 12 2 15 5"></polyline>
-            <polyline points="19 9 22 12 19 15"></polyline>
-            <polyline points="9 19 12 22 15 19"></polyline>
-            <line x1="2" y1="12" x2="22" y2="12"></line>
-            <line x1="12" y1="2" x2="12" y2="22"></line>
+          <svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor" aria-hidden="true">
+            <circle cx="2.5" cy="2.5" r="1.5"/>
+            <circle cx="7.5" cy="2.5" r="1.5"/>
+            <circle cx="2.5" cy="8" r="1.5"/>
+            <circle cx="7.5" cy="8" r="1.5"/>
+            <circle cx="2.5" cy="13.5" r="1.5"/>
+            <circle cx="7.5" cy="13.5" r="1.5"/>
           </svg>
         </div>
         <ul className={`${styles.navList} ${isTop ? styles.navListTop : ''}`}>
           {navItems.map(({ to, label }) => {
             // Hide admin routes from non-admins
-            if (!isAuthenticated && (to === "/upload" || to === "/files")) {
+            if (!isAuthenticated && (to === "/upload" || to === "/files" || to === "/outlook")) {
               return null;
             }
             return (
@@ -142,34 +137,18 @@ export function Sidebar({ position, onDragStart, onDragEnd }: SidebarProps) {
             );
           })}
 
-          <div style={{ marginTop: "auto", paddingTop: "2rem" }}>
-            {isAuthenticated ? (
-              <li>
-                <button
-                  type="button"
-                  className={styles.navLink}
-                  style={{ width: "100%", textAlign: "left", background: "none", border: "none", cursor: "pointer", color: "var(--color-danger)" }}
-                  onClick={() => {
-                    logout();
-                    navigate("/dashboard");
-                  }}
-                >
-                  Logout
-                </button>
-              </li>
-            ) : (
-              <li>
-                <NavLink
-                  to="/login"
-                  className={({ isActive }) =>
-                    isActive ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink
-                  }
-                >
-                  Admin Login
-                </NavLink>
-              </li>
-            )}
-          </div>
+          {!isAuthenticated && (
+            <li className={styles.authNavItem}>
+              <NavLink
+                to="/login"
+                className={({ isActive }) =>
+                  isActive ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink
+                }
+              >
+                Admin Login
+              </NavLink>
+            </li>
+          )}
         </ul>
       </nav>
     </div>

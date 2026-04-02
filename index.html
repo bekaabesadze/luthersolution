@@ -7,6 +7,13 @@
     <meta name="author" content="Beka Abesadze" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <meta name="theme-color" content="#161a22" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="CBA Dashboard" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/png" href="/icons/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512.png" />
     <title>Competitor Bank Analytics | CBA – Beka Abesadze</title>
     <script type="application/ld+json">
     {
@@ -28,6 +35,10 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- Apply saved theme before React mounts to prevent flash -->
+    <script>
+      (function(){var t=localStorage.getItem('theme');if(t==='light'||t==='dark'||t==='slate')document.documentElement.setAttribute('data-theme',t);})();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

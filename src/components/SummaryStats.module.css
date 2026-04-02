@@ -10,7 +10,8 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   padding: 1rem 1.25rem;
-  box-shadow: var(--shadow);
+  /* Stronger default elevation so KPI cards don't feel flat */
+  box-shadow: var(--shadow-md);
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
@@ -53,7 +54,7 @@
   width: 1.75rem;
   height: 1.75rem;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius);
   background: var(--color-surface-elevated);
   color: var(--color-text);
   cursor: pointer;
@@ -61,6 +62,7 @@
   align-items: center;
   justify-content: center;
   opacity: 0;
+  box-shadow: var(--shadow-md);
   transition: all 0.2s ease;
   border: 1px solid var(--color-border);
   z-index: 1;

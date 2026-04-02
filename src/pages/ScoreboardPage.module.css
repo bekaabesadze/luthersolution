@@ -68,6 +68,124 @@
   min-width: 200px;
 }
 
+.activeSlicesSection {
+  margin-top: 1rem;
+  animation: fadeIn 0.25s ease;
+}
+
+.activeSlicesHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.activeSlicesTitle {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.activeSlicesHint {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.activeSlicesList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.activeSliceChip {
+  min-width: 12rem;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.85rem 0.75rem 0.95rem;
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.activeSliceChipDefault {
+  box-shadow: 0 0 0 1px rgba(13, 148, 136, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.activeSliceChipBody {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.activeSliceChipTop {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.activeSliceDefaultBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.14rem 0.48rem;
+  border-radius: 999px;
+  background: rgba(13, 148, 136, 0.12);
+  color: var(--color-primary);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.activeSlicePeriod {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.activeSliceBank {
+  min-width: 0;
+  font-size: 0.95rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.activeSliceRemoveBtn {
+  flex-shrink: 0;
+  width: 1.65rem;
+  height: 1.65rem;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--color-text-muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.activeSliceRemoveBtn:hover {
+  background: var(--color-error-soft);
+  color: var(--color-error);
+  transform: scale(1.05);
+}
+
 .loading {
   text-align: center;
   padding: 2rem;
@@ -168,7 +286,7 @@
 }
 
 .thValue {
-  min-width: 12rem;
+  min-width: 8.75rem;
   text-align: right;
 }
 
@@ -185,7 +303,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 14rem;
+  max-width: 5.5rem;
 }
 
 .removeSliceBtn {
@@ -547,8 +665,54 @@
   letter-spacing: 0.02em;
 }
 
+.averagesSubtitle {
+  margin: 0.4rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+  max-width: 16rem;
+}
+
+.averagesBankLegend {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-end;
+  padding-top: 0.5rem;
+  margin-top: 0.25rem;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.averagesBankLegendItem {
+  min-width: 4.5rem;
+  display: inline-flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  font-weight: 700;
+}
+
+.defaultLegend {
+  color: var(--color-primary);
+}
+
+.legendStar {
+  font-size: 0.7rem;
+  line-height: 1;
+  transform: translateY(-0.05rem);
+}
+
+.legendBankLabel {
+  max-width: 6rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .averagesScroll {
   overflow-y: auto;
+  overflow-x: auto;
   padding: 1.25rem;
   flex: 1;
 }
@@ -574,10 +738,10 @@
 
 .averageRow {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-  padding: 0.5rem 0;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.75rem;
+  padding: 0.875rem 0;
   border-bottom: 1px dashed var(--color-border-soft);
 }
 
@@ -586,18 +750,79 @@
 }
 
 .averageMetric {
-  color: var(--color-text-muted);
+  color: var(--color-text);
   font-size: 0.8125rem;
-  line-height: 1.25;
-  flex: 1;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .averageValue {
-  font-weight: 600;
+  display: block;
+  font-weight: 700;
   color: var(--color-text);
-  font-size: 0.8125rem;
+  font-size: 0.95rem;
   font-variant-numeric: tabular-nums;
-  margin-top: 0.125rem;
+  line-height: 1.1;
+  min-width: 0;
+  text-align: left;
+}
+
+.averageValuesByBank {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: 0.625rem;
+  align-items: stretch;
+}
+
+.averageValueCard {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.625rem 0.7rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.9rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.defaultBankAverageCard {
+  box-shadow: 0 0 0 1px rgba(13, 148, 136, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.averageValueCardTop {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.averageBankBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+  padding: 0.2rem 0.45rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.averageBankStar {
+  line-height: 1;
+}
+
+.averageBankName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.defaultBankAverageValue {
+  color: var(--color-primary);
+  font-weight: 800;
 }
 
 /* Category backgrounds for the averages island */
@@ -631,6 +856,175 @@
   color: #0f766e;
 }
 
+/* ── Filter label with inline badge ─────────────────────────────────────── */
+.filterLabelText {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.defaultBadge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  background: rgba(13, 148, 136, 0.1);
+  border: 1px solid rgba(13, 148, 136, 0.25);
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* ── Comparison bank section ─────────────────────────────────────────────── */
+.compSection {
+  margin-top: 0.875rem;
+  padding-top: 0.875rem;
+  border-top: 1px dashed var(--color-border);
+}
+
+.compSectionRow {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.compControls {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.addBankBtn {
+  padding: 0.4rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: rgba(13, 148, 136, 0.06);
+  border: 1px dashed rgba(13, 148, 136, 0.4);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.addBankBtn:hover {
+  background: rgba(13, 148, 136, 0.12);
+  border-color: var(--color-primary);
+}
+
+.cancelCompBtn {
+  padding: 0.5rem 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  margin-top: 1.5rem;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.cancelCompBtn:hover {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.compLoadingText {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  align-self: center;
+  margin-top: 1.5rem;
+}
+
+/* ── Delta toggle ────────────────────────────────────────────────────────── */
+.deltaToggle {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.deltaToggle input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.deltaToggle:hover {
+  color: var(--color-text);
+}
+
+/* ── Column header: default star + set-default button ───────────────────── */
+.sliceHeaderInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.defaultStar {
+  color: var(--color-primary);
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.setDefaultBtn {
+  flex-shrink: 0;
+  padding: 0.15rem 0.45rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+  line-height: 1.4;
+}
+
+.setDefaultBtn:hover {
+  background: rgba(13, 148, 136, 0.1);
+  color: var(--color-primary);
+  border-color: rgba(13, 148, 136, 0.35);
+}
+
+/* ── Cell value + delta ──────────────────────────────────────────────────── */
+.cellContent {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.15rem;
+}
+
+.deltaPos {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+  line-height: 1;
+}
+
+.deltaNeg {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #ef4444;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+  line-height: 1;
+}
+
 @media (max-width: 1024px) {
   .contentLayout {
     flex-direction: column;
@@ -654,6 +1048,15 @@
   .filterSelectWrap {
     min-width: 0;
     width: 100%;
+  }
+
+  .activeSlicesList {
+    flex-direction: column;
+  }
+
+  .activeSliceChip {
+    width: 100%;
+    min-width: 0;
   }
 
   .addColumnBtn {
@@ -705,6 +1108,10 @@
 
   .averagesScroll {
     padding: 1rem;
+  }
+
+  .averageValuesByBank {
+    grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
   }
 }
 

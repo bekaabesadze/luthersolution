@@ -17,6 +17,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { PrivacyPage } from "./pages/PrivacyPage";
 import { TermsPage } from "./pages/TermsPage";
 import { AboutPage } from "./pages/AboutPage";
+import { OutlookPage } from "./pages/OutlookPage";
 
 export function App() {
   return (
@@ -33,6 +34,7 @@ export function App() {
           <Route element={<ProtectedRoute />}>
             <Route path="upload" element={<UploadPage />} />
             <Route path="files" element={<FilesPage />} />
+            <Route path="outlook" element={<OutlookPage />} />
           </Route>
 
           <Route path="reports" element={<ReportsPage />} />

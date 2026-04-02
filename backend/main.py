@@ -136,7 +136,9 @@ allowed_origins = [
     "http://127.0.0.1:4000",
     "http://127.0.0.1:8000",
     "http://luthersolution.com",
-    "https://luthersolution.com",  # in case frontend is proxied
+    "https://luthersolution.com",
+    "http://www.luthersolution.com",
+    "https://www.luthersolution.com",
 ]
 if frontend_url:
     # Also handle comma-separated lists if multiple URLs are provided

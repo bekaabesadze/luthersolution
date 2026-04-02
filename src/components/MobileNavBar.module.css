@@ -1,0 +1,92 @@
+/* Mobile bottom navigation bar for app-like experience */
+
+.mobileNav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 120;
+  background: rgba(22, 26, 34, 0.96);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid var(--color-border-strong);
+  box-shadow: 0 -12px 40px -18px rgba(0, 0, 0, 0.8);
+  padding: 0.25rem 0.75rem calc(0.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+.navList {
+  max-width: 640px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  list-style: none;
+  padding: 0;
+  gap: 0.25rem;
+}
+
+.navItem {
+  flex: 1;
+  display: flex;
+}
+
+.navLink {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  padding: 0.45rem 0.35rem;
+  border-radius: 999px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  border: 1px solid transparent;
+  background: transparent;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.12s ease;
+}
+
+.navLink:hover {
+  background: var(--color-bg-subtle);
+  color: var(--color-text);
+}
+
+.navLinkActive {
+  color: var(--color-accent);
+  background: rgba(87, 155, 252, 0.12);
+  border-color: rgba(87, 155, 252, 0.55);
+  box-shadow: 0 6px 20px -8px rgba(87, 155, 252, 0.6);
+  transform: translateY(-1px);
+}
+
+.icon {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.label {
+  line-height: 1.1;
+}
+
+/* Reset button defaults for the logout button */
+button.navLink {
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 0.45rem 0.35rem;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* Hide bottom nav on larger screens */
+@media (min-width: 769px) {
+  .mobileNav {
+    display: none;
+  }
+}
+

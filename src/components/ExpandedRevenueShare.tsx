@@ -7,7 +7,7 @@ import { useState, useMemo } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend, AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
 import { ExpandedCard } from "./ExpandedCard";
 import type { MetricRow } from "../api/types";
-import { metricsToMarketShare } from "../utils/metricsTransform";
+import { metricsToMarketShareGrouped } from "../utils/metricsTransform";
 import styles from "./ExpandedViews.module.css";
 
 export interface ExpandedRevenueShareProps {
@@ -42,6 +42,58 @@ const tooltipContentStyle = {
   fontWeight: 500,
 } as const;
 
+const legendWrapStyle = {
+  fontSize: "12px",
+  maxHeight: 420,
+  overflowY: "auto",
+  paddingRight: 8,
+  maxWidth: 320,
+} as const;
+
+const renderWrappedLegend = (revenueShareData: { name: string; value: number }[], total: number) => {
+  return ({ payload }: any) => {
+    const items = (payload || []) as Array<{ value: string; color: string }>;
+    return (
+      <div style={legendWrapStyle}>
+        {items.map((it) => {
+          const d = revenueShareData.find((x) => x.name === it.value);
+          const pct = d && total > 0 ? ((d.value / total) * 100).toFixed(1) : "0.0";
+          return (
+            <div
+              key={it.value}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 8,
+                marginBottom: 8,
+                lineHeight: 1.2,
+              }}
+              title={it.value}
+            >
+              <span
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: 999,
+                  background: it.color,
+                  marginTop: 2,
+                  flex: "0 0 auto",
+                }}
+              />
+              <span style={{ whiteSpace: "normal", wordBreak: "break-word", color: "var(--color-text)" }}>
+                {it.value}{" "}
+                <span style={{ color: "var(--color-text-muted)", fontWeight: 600 }}>
+                  ({pct}%)
+                </span>
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+};
+
 export function ExpandedRevenueShare({ revenueShareData, metrics, onClose }: ExpandedRevenueShareProps) {
   const [activeTab, setActiveTab] = useState<"current" | "historical">("current");
 
@@ -49,7 +101,7 @@ export function ExpandedRevenueShare({ revenueShareData, metrics, onClose }: Exp
   const topBank = revenueShareData.reduce((a, b) => (a.value >= b.value ? a : b), revenueShareData[0]);
 
   const marketShareData = useMemo(() => {
-    return metricsToMarketShare(metrics, isRevenue);
+    return metricsToMarketShareGrouped(metrics, isRevenue, 5);
   }, [metrics]);
 
   const historicalChartData = useMemo(() => {
@@ -155,7 +207,7 @@ export function ExpandedRevenueShare({ revenueShareData, metrics, onClose }: Exp
           </div>
           <div style={{ height: "500px", marginTop: "1rem" }}>
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+              <PieChart margin={{ top: 8, right: 40, left: 8, bottom: 8 }}>
                 <Pie
                   data={revenueShareData}
                   dataKey="value"
@@ -165,8 +217,9 @@ export function ExpandedRevenueShare({ revenueShareData, metrics, onClose }: Exp
                   innerRadius={80}
                   outerRadius={140}
                   paddingAngle={2}
-                  label={({ name, percent }) => (percent >= 0.06 ? `${name}: ${(percent * 100).toFixed(0)}%` : "")}
-                  labelLine={{ stroke: "var(--color-border)", strokeWidth: 1 }}
+                  // Keep on-slice labels minimal to avoid truncation; full names live in the legend.
+                  label={({ percent }) => (percent >= 0.08 ? `${(percent * 100).toFixed(0)}%` : "")}
+                  labelLine={false}
                   animationBegin={200}
                   animationDuration={900}
                   animationEasing="ease-out"
@@ -185,14 +238,7 @@ export function ExpandedRevenueShare({ revenueShareData, metrics, onClose }: Exp
                   layout="vertical"
                   align="right"
                   verticalAlign="middle"
-                  formatter={(value) => {
-                    const d = revenueShareData.find((x) => x.name === value);
-                    const pct = d && total > 0 ? ((d.value / total) * 100).toFixed(1) : "0";
-                    return `${value} (${pct}%)`;
-                  }}
-                  wrapperStyle={{ fontSize: "12px" }}
-                  iconType="circle"
-                  iconSize={8}
+                  content={renderWrappedLegend(revenueShareData, total)}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -234,7 +280,6 @@ export function ExpandedRevenueShare({ revenueShareData, metrics, onClose }: Exp
                   <Legend />
                   {Object.keys(historicalChartData[0] || {})
                     .filter((k) => k !== "quarter")
-                    .slice(0, 8)
                     .map((bank, i) => (
                       <Area
                         key={bank}

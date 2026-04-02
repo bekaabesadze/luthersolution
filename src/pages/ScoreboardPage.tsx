@@ -3,6 +3,7 @@
  * Replicates the boss's Excel CAMELS table: two-column layout with
  * CAMELS categories (vertical text, colored) and Strategic Metrics/Indicators.
  * When a bank and quarter are selected, displays values from uploaded CAMEL Excel data.
+ * Supports multi-bank comparison with delta display.
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
@@ -73,6 +74,21 @@ function formatCamelValue(metric: string, value: number): string {
   return value.toLocaleString(undefined, { maximumFractionDigits: 4 });
 }
 
+function formatAverageBankLabel(bankId: string): string {
+  const trimmed = bankId.replace(/\s+Bank$/i, "").trim();
+  return trimmed || bankId;
+}
+
+function formatSlicePeriod(year: number, quarter: number): string {
+  return `${year} Q${quarter}`;
+}
+
+function formatCompactSliceHeader(bankId: string): string {
+  const shortened = formatAverageBankLabel(bankId).trim();
+  const [firstWord] = shortened.split(/\s+/);
+  return firstWord || shortened || bankId;
+}
+
 function toMetricMap(metrics: MetricRow[]): Record<string, number> {
   const out: Record<string, number> = {};
   const latestId: Record<string, number> = {};
@@ -87,9 +103,33 @@ function toMetricMap(metrics: MetricRow[]): Record<string, number> {
   return out;
 }
 
+/** Derive a sorted quarters list from a metrics array. */
+function deriveQuarters(metrics: MetricRow[]): { year: number; quarter: number }[] {
+  const qSet = new Map<string, { year: number; quarter: number }>();
+  metrics.forEach((m) => {
+    const key = `${m.year}-${m.quarter}`;
+    if (!qSet.has(key)) qSet.set(key, { year: m.year, quarter: m.quarter });
+  });
+  return Array.from(qSet.values()).sort((a, b) => b.year - a.year || b.quarter - a.quarter);
+}
+
 // Metrics that we do not want to display even if a numeric value is present.
 // Keep empty for now so all computed/loaded metrics are shown.
 const UNVERIFIED_METRICS = new Set<string>([]);
+
+/**
+ * Color palette for multi-bank comparison.
+ * Index 0 = default (primary) bank — no tint.
+ * Indices 1+ = comparison banks — colored tint.
+ */
+const BANK_COLORS = [
+  { accent: "var(--color-primary)", bg: "transparent", headerBg: "transparent" },
+  { accent: "#10b981", bg: "rgba(16,185,129,0.05)", headerBg: "rgba(16,185,129,0.15)" },
+  { accent: "#f59e0b", bg: "rgba(245,158,11,0.05)", headerBg: "rgba(245,158,11,0.15)" },
+  { accent: "#8b5cf6", bg: "rgba(139,92,246,0.05)", headerBg: "rgba(139,92,246,0.15)" },
+  { accent: "#ef4444", bg: "rgba(239,68,68,0.05)", headerBg: "rgba(239,68,68,0.15)" },
+  { accent: "#06b6d4", bg: "rgba(6,182,212,0.05)", headerBg: "rgba(6,182,212,0.15)" },
+] as const;
 
 export function deriveCamelValues(
   current: Record<string, number>,
@@ -397,6 +437,25 @@ export function ScoreboardPage() {
   const [isExpanded, setIsExpanded] = useState(false);
   const copyToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ── Comparison state ──────────────────────────────────────────────────────
+  /** The bank used as the baseline for Δ calculations. Auto-set to primary bank. */
+  const [defaultBankId, setDefaultBankId] = useState<string>("");
+  /** Whether to show Δ vs default bank in comparison columns. */
+  const [showDelta, setShowDelta] = useState(false);
+  /** Controls visibility of the "add comparison bank" panel. */
+  const [showCompPanel, setShowCompPanel] = useState(false);
+  /** Currently selected bank in the comparison selector. */
+  const [compBank, setCompBank] = useState<string>("");
+  /** Selected year in the comparison period selector. */
+  const [compYear, setCompYear] = useState<number | null>(null);
+  /** Selected quarter in the comparison period selector. */
+  const [compQuarter, setCompQuarter] = useState<number | null>(null);
+  /** Available periods for the comparison bank. */
+  const [compQuartersList, setCompQuartersList] = useState<{ year: number; quarter: number }[]>([]);
+  /** Loading state while fetching comparison bank metrics. */
+  const [compLoading, setCompLoading] = useState(false);
+  // ─────────────────────────────────────────────────────────────────────────
+
   const handleCopy = useCallback(async (text: string) => {
     if (!text.trim()) return;
     try {
@@ -442,6 +501,7 @@ export function ScoreboardPage() {
       setSelectedYear(null);
       setSelectedQuarter(null);
       setSlices([]);
+      setDefaultBankId("");
       return;
     }
     let cancelled = false;
@@ -451,27 +511,24 @@ export function ScoreboardPage() {
         if (cancelled) return;
         const metrics = res.metrics as MetricRow[];
         setMetricsByBank((prev) => ({ ...prev, [selectedBank]: metrics }));
-        const qSet = new Map<string, { year: number; quarter: number }>();
-        metrics.forEach((m) => {
-          const key = `${m.year}-${m.quarter}`;
-          if (!qSet.has(key)) qSet.set(key, { year: m.year, quarter: m.quarter });
-        });
-        const qList = Array.from(qSet.values()).sort((a, b) => b.year - a.year || b.quarter - a.quarter);
+        const qList = deriveQuarters(metrics);
         setQuarters(qList);
         if (qList.length > 0) {
-          setSelectedYear(qList[0].year);
-          setSelectedQuarter(qList[0].quarter);
-
-          const newSlices = qList.map((q) => ({
-            id: `slice-${selectedBank}-${q.year}-${q.quarter}`,
+          const latest = qList[0];
+          setSelectedYear(latest.year);
+          setSelectedQuarter(latest.quarter);
+          // Show only the most recent quarter by default — use "Add column" for more.
+          setSlices([{
+            id: `slice-${selectedBank}-${latest.year}-${latest.quarter}`,
             bankId: selectedBank,
-            year: q.year,
-            quarter: q.quarter,
-          }));
-          setSlices(newSlices);
+            year: latest.year,
+            quarter: latest.quarter,
+          }]);
         } else {
           setSlices([]);
         }
+        // The newly-selected bank is the default reference.
+        setDefaultBankId(selectedBank);
         setMetricsLoading(false);
       })
       .catch(() => {
@@ -485,6 +542,39 @@ export function ScoreboardPage() {
     };
   }, [selectedBank]);
 
+  // When a comparison bank is picked, load its quarters list.
+  useEffect(() => {
+    if (!compBank) {
+      setCompQuartersList([]);
+      setCompYear(null);
+      setCompQuarter(null);
+      return;
+    }
+    const load = async () => {
+      setCompLoading(true);
+      try {
+        // Use cached data if available; otherwise fetch.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const cached = (metricsByBank as any)[compBank] as MetricRow[] | undefined;
+        let metrics = cached;
+        if (!metrics) {
+          const res = await getMetrics({ bank_id: compBank });
+          metrics = res.metrics as MetricRow[];
+          setMetricsByBank((prev) => ({ ...prev, [compBank]: metrics! }));
+        }
+        const qList = deriveQuarters(metrics);
+        setCompQuartersList(qList);
+        if (qList.length > 0) {
+          setCompYear(qList[0].year);
+          setCompQuarter(qList[0].quarter);
+        }
+      } finally {
+        setCompLoading(false);
+      }
+    };
+    load();
+  }, [compBank]); // intentionally omitting metricsByBank — we read it once via closure
+
   // Build value map per slice from cached metrics.
   const valueByMetricBySlice = useMemo(() => {
     const out: Record<string, Record<string, number>> = {};
@@ -494,12 +584,7 @@ export function ScoreboardPage() {
         out[slice.id] = {};
         return;
       }
-      const qSet = new Map<string, { year: number; quarter: number }>();
-      metrics.forEach((m) => {
-        const key = `${m.year}-${m.quarter}`;
-        if (!qSet.has(key)) qSet.set(key, { year: m.year, quarter: m.quarter });
-      });
-      const qList = Array.from(qSet.values()).sort((a, b) => b.year - a.year || b.quarter - a.quarter);
+      const qList = deriveQuarters(metrics);
       const currentRows = metrics.filter(
         (m) => m.year === slice.year && m.quarter === slice.quarter
       );
@@ -521,6 +606,106 @@ export function ScoreboardPage() {
     return out;
   }, [slices, metricsByBank]);
 
+  /** Map each bankId to its color from the palette. Default bank = index 0 (no tint). */
+  const bankColorMap = useMemo(() => {
+    const map: Record<string, typeof BANK_COLORS[number]> = {};
+    let colorIdx = 1;
+    const seen = new Set<string>();
+    slices.forEach((s) => {
+      if (!seen.has(s.bankId)) {
+        seen.add(s.bankId);
+        if (s.bankId === defaultBankId) {
+          map[s.bankId] = BANK_COLORS[0];
+        } else {
+          map[s.bankId] = BANK_COLORS[colorIdx % (BANK_COLORS.length - 1) + 1];
+          colorIdx++;
+        }
+      }
+    });
+    return map;
+  }, [slices, defaultBankId]);
+
+  /**
+   * Reference values from the default bank's slice that matches the selected period,
+   * falling back to the first slice of the default bank. Used for Δ computation.
+   */
+  const defaultValues = useMemo(() => {
+    const defaultSlice =
+      slices.find(
+        (s) => s.bankId === defaultBankId && s.year === selectedYear && s.quarter === selectedQuarter
+      ) ?? slices.find((s) => s.bankId === defaultBankId);
+    if (!defaultSlice) return {} as Record<string, number>;
+    return valueByMetricBySlice[defaultSlice.id] ?? {};
+  }, [slices, defaultBankId, selectedYear, selectedQuarter, valueByMetricBySlice]);
+
+  /**
+   * Ordered list of bankIds for the “Period Averages” island.
+   * Default bank first, then any other banks in the order their columns appear.
+   */
+  const orderedBankIds = useMemo(() => {
+    const seen = new Set<string>();
+    const inOrder: string[] = [];
+    slices.forEach((s) => {
+      if (!seen.has(s.bankId)) {
+        seen.add(s.bankId);
+        inOrder.push(s.bankId);
+      }
+    });
+
+    if (defaultBankId && inOrder.includes(defaultBankId)) {
+      return [defaultBankId, ...inOrder.filter((id) => id !== defaultBankId)];
+    }
+    return inOrder;
+  }, [slices, defaultBankId]);
+
+  /**
+   * Compute period averages per bank across the currently-added table columns.
+   * “Period averages” here means: average of each metric across all selected
+   * slices for that specific bank (not across banks).
+   */
+  const avgByBankIdMetric = useMemo(() => {
+    const out: Record<string, Record<string, number | null>> = {};
+    orderedBankIds.forEach((bankId) => {
+      out[bankId] = {};
+    });
+
+    // Pre-group slice ids by bank for less repeated filtering.
+    const sliceIdsByBank: Record<string, string[]> = {};
+    orderedBankIds.forEach((bankId) => {
+      sliceIdsByBank[bankId] = [];
+    });
+    slices.forEach((slice) => {
+      if (!sliceIdsByBank[slice.bankId]) sliceIdsByBank[slice.bankId] = [];
+      sliceIdsByBank[slice.bankId].push(slice.id);
+    });
+
+    orderedBankIds.forEach((bankId) => {
+      const sliceIds = sliceIdsByBank[bankId] ?? [];
+
+      CAMEL_ROWS.forEach((row) => {
+        let sum = 0;
+        let count = 0;
+        sliceIds.forEach((sliceId) => {
+          const valMap = valueByMetricBySlice[sliceId];
+          const v = valMap?.[row.metric];
+          if (v != null && !Number.isNaN(v)) {
+            sum += v;
+            count++;
+          }
+        });
+        out[bankId][row.metric] = count > 0 ? sum / count : null;
+      });
+    });
+
+    return out;
+  }, [orderedBankIds, slices, valueByMetricBySlice]);
+
+  /** True when at least one non-default-bank column is present. */
+  const hasCompBanks = useMemo(
+    () => slices.some((s) => s.bankId !== defaultBankId),
+    [slices, defaultBankId]
+  );
+
   const addColumn = useCallback(() => {
     if (!selectedBank || selectedYear == null || selectedQuarter == null) return;
     setSlices((prev) => [
@@ -533,6 +718,21 @@ export function ScoreboardPage() {
       },
     ]);
   }, [selectedBank, selectedYear, selectedQuarter]);
+
+  /** Add a column from the comparison bank selector. */
+  const addComparisonColumn = useCallback(() => {
+    if (!compBank || compYear == null || compQuarter == null) return;
+    setSlices((prev) => [
+      ...prev,
+      {
+        id: `slice-comp-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        bankId: compBank,
+        year: compYear,
+        quarter: compQuarter,
+      },
+    ]);
+    setShowCompPanel(false);
+  }, [compBank, compYear, compQuarter]);
 
   const removeSlice = useCallback((id: string) => {
     setSlices((prev) => prev.filter((s) => s.id !== id));
@@ -562,6 +762,14 @@ export function ScoreboardPage() {
     [banks]
   );
 
+  const compBankOptions = useMemo(
+    () => [
+      { value: "", label: "Select a bank" },
+      ...banks.filter((b) => b !== selectedBank).map((b) => ({ value: b, label: b })),
+    ],
+    [banks, selectedBank]
+  );
+
   const periodOptions = useMemo(
     () =>
       quarters.map(({ year, quarter }) => ({
@@ -571,10 +779,22 @@ export function ScoreboardPage() {
     [quarters]
   );
 
+  const compPeriodOptions = useMemo(
+    () =>
+      compQuartersList.map(({ year, quarter }) => ({
+        value: `${year}-${quarter}`,
+        label: `${year} Q${quarter}`,
+      })),
+    [compQuartersList]
+  );
+
   const periodValue =
     selectedYear != null && selectedQuarter != null
       ? `${selectedYear}-${selectedQuarter}`
       : "";
+
+  const compPeriodValue =
+    compYear != null && compQuarter != null ? `${compYear}-${compQuarter}` : "";
 
   return (
     <div className={styles.page}>
@@ -584,11 +804,14 @@ export function ScoreboardPage() {
         </div>
       )}
 
-
       <div className={`card ${styles.filtersCard}`}>
+        {/* ── Primary bank controls ─────────────────────────────────────── */}
         <div className={styles.filters}>
           <label className={styles.filterLabel}>
-            Select Bank
+            <span className={styles.filterLabelText}>
+              Primary Bank
+              {selectedBank && <span className={styles.defaultBadge}>★ Default</span>}
+            </span>
             <div className={styles.filterSelectWrap}>
               <CustomSelect
                 value={selectedBank}
@@ -632,6 +855,155 @@ export function ScoreboardPage() {
             </>
           )}
         </div>
+
+        {slices.length > 0 && (
+          <div className={styles.activeSlicesSection}>
+            <div className={styles.activeSlicesHeader}>
+              <span className={styles.activeSlicesTitle}>Active Columns</span>
+              <span className={styles.activeSlicesHint}>
+                Visible in the sheet and period averages
+              </span>
+            </div>
+            <div className={styles.activeSlicesList} aria-label="Active comparison columns">
+              {slices.map((slice) => {
+                const isDefault = slice.bankId === defaultBankId;
+                const color = bankColorMap[slice.bankId] ?? BANK_COLORS[0];
+                const label = `${slice.bankId} ${formatSlicePeriod(slice.year, slice.quarter)}`;
+                const chipAccent = isDefault ? "var(--color-primary)" : color.accent;
+                const chipBackground = isDefault
+                  ? "rgba(13, 148, 136, 0.08)"
+                  : color.bg === "transparent"
+                    ? "var(--color-bg-subtle)"
+                    : color.bg;
+
+                return (
+                  <div
+                    key={`active-${slice.id}`}
+                    className={`${styles.activeSliceChip} ${isDefault ? styles.activeSliceChipDefault : ""}`}
+                    style={{ borderColor: chipAccent, background: chipBackground }}
+                  >
+                    <div className={styles.activeSliceChipBody}>
+                      <div className={styles.activeSliceChipTop}>
+                        {isDefault && (
+                          <span className={styles.activeSliceDefaultBadge}>★ Default</span>
+                        )}
+                        <span className={styles.activeSlicePeriod}>
+                          {formatSlicePeriod(slice.year, slice.quarter)}
+                        </span>
+                      </div>
+                      <span className={styles.activeSliceBank}>{slice.bankId}</span>
+                    </div>
+                    <button
+                      type="button"
+                      className={styles.activeSliceRemoveBtn}
+                      onClick={() => removeSlice(slice.id)}
+                      title="Remove column"
+                      aria-label={`Remove ${label}`}
+                    >
+                      ×
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── Comparison bank panel ──────────────────────────────────────── */}
+        {selectedBank && banks.length > 1 && (
+          <div className={styles.compSection}>
+            <div className={styles.compSectionRow}>
+              {!showCompPanel && (
+                <button
+                  type="button"
+                  className={styles.addBankBtn}
+                  onClick={() => setShowCompPanel(true)}
+                >
+                  + Compare Bank
+                </button>
+              )}
+
+              {showCompPanel && (
+                <div className={styles.compControls}>
+                  <label className={styles.filterLabel}>
+                    Compare with
+                    <div className={styles.filterSelectWrap}>
+                      <CustomSelect
+                        value={compBank}
+                        onChange={setCompBank}
+                        options={compBankOptions}
+                        placeholder="Select bank"
+                        id="comp-bank"
+                      />
+                    </div>
+                  </label>
+
+                  {compBank && compQuartersList.length > 0 && (
+                    <>
+                      <label className={styles.filterLabel}>
+                        Period
+                        <div className={styles.filterSelectWrap}>
+                          <CustomSelect
+                            value={compPeriodValue}
+                            onChange={(v) => {
+                              if (v) {
+                                const [y, q] = v.split("-").map(Number);
+                                setCompYear(y);
+                                setCompQuarter(q);
+                              }
+                            }}
+                            options={compPeriodOptions}
+                            placeholder="Select period"
+                            id="comp-period"
+                          />
+                        </div>
+                      </label>
+                      <div className={styles.filterLabel}>
+                        <button
+                          type="button"
+                          className={styles.addColumnBtn}
+                          onClick={addComparisonColumn}
+                          disabled={compLoading}
+                        >
+                          Add
+                        </button>
+                      </div>
+                    </>
+                  )}
+
+                  {compLoading && (
+                    <span className={styles.compLoadingText}>Loading…</span>
+                  )}
+
+                  <div className={styles.filterLabel}>
+                    <button
+                      type="button"
+                      className={styles.cancelCompBtn}
+                      onClick={() => {
+                        setShowCompPanel(false);
+                        setCompBank("");
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Δ toggle — only visible when comparison columns exist */}
+              {hasCompBanks && (
+                <label className={styles.deltaToggle}>
+                  <input
+                    type="checkbox"
+                    checked={showDelta}
+                    onChange={(e) => setShowDelta(e.target.checked)}
+                  />
+                  <span>Show Δ vs Default</span>
+                </label>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {loading && (
@@ -712,11 +1084,19 @@ export function ScoreboardPage() {
                         Strategic Metrics/Indicators
                       </th>
                       {slices.map((slice) => {
-                        const label = `${slice.bankId} ${slice.year} Q${slice.quarter}`;
+                        const isDefault = slice.bankId === defaultBankId;
+                        const color = bankColorMap[slice.bankId] ?? BANK_COLORS[0];
+                        const label = `${slice.bankId} ${formatSlicePeriod(slice.year, slice.quarter)}`;
+                        const compactLabel = formatCompactSliceHeader(slice.bankId);
                         return (
                           <th
                             key={slice.id}
                             className={`${styles.thValue} ${styles.copyableCell}`}
+                            style={
+                              color.headerBg !== "transparent"
+                                ? { background: color.headerBg }
+                                : undefined
+                            }
                             onClick={() => handleCopy(label)}
                             role="button"
                             tabIndex={0}
@@ -729,7 +1109,30 @@ export function ScoreboardPage() {
                             title="Click to copy"
                           >
                             <div className={styles.thValueInner}>
-                              <span className={styles.sliceLabel}>{label}</span>
+                              <div className={styles.sliceHeaderInfo}>
+                                {isDefault && (
+                                  <span
+                                    className={styles.defaultStar}
+                                    title="Default bank (reference for Δ)"
+                                  >
+                                    ★
+                                  </span>
+                                )}
+                                <span className={styles.sliceLabel}>{compactLabel}</span>
+                                {!isDefault && (
+                                  <button
+                                    type="button"
+                                    className={styles.setDefaultBtn}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setDefaultBankId(slice.bankId);
+                                    }}
+                                    title="Set as default reference for Δ comparisons"
+                                  >
+                                    Set default
+                                  </button>
+                                )}
+                              </div>
                               <button
                                 type="button"
                                 className={styles.removeSliceBtn}
@@ -788,15 +1191,52 @@ export function ScoreboardPage() {
                             {row.metric}
                           </td>
                           {slices.map((slice) => {
+                            const isCompBank = slice.bankId !== defaultBankId;
+                            const color = bankColorMap[slice.bankId] ?? BANK_COLORS[0];
                             const valueMap = valueByMetricBySlice[slice.id];
+                            const value = valueMap?.[row.metric];
                             const valueDisplay =
                               valueMap && !UNVERIFIED_METRICS.has(row.metric)
-                                ? formatCamelValue(row.metric, valueMap[row.metric])
+                                ? formatCamelValue(row.metric, value)
                                 : "—";
+
+                            // Δ vs default bank — only for comparison columns when toggle is on
+                            let deltaEl: React.ReactNode = null;
+                            if (showDelta && isCompBank && valueMap) {
+                              const defaultVal = defaultValues[row.metric];
+                              if (
+                                value != null &&
+                                !isNaN(value) &&
+                                defaultVal != null &&
+                                !isNaN(defaultVal)
+                              ) {
+                                const delta = value - defaultVal;
+                                const absDeltaStr = formatCamelValue(
+                                  row.metric,
+                                  Math.abs(delta)
+                                );
+                                const sign = delta >= 0 ? "+" : "−";
+                                deltaEl = (
+                                  <span
+                                    className={
+                                      delta >= 0 ? styles.deltaPos : styles.deltaNeg
+                                    }
+                                  >
+                                    {sign}{absDeltaStr}
+                                  </span>
+                                );
+                              }
+                            }
+
                             return (
                               <td
                                 key={slice.id}
                                 className={`${styles.tdValue} ${styles.copyableCell}`}
+                                style={
+                                  isCompBank && color.bg !== "transparent"
+                                    ? { background: color.bg }
+                                    : undefined
+                                }
                                 onClick={() => handleCopy(valueDisplay)}
                                 role="button"
                                 tabIndex={0}
@@ -808,7 +1248,10 @@ export function ScoreboardPage() {
                                 }}
                                 title="Click to copy"
                               >
-                                {valueDisplay}
+                                <div className={styles.cellContent}>
+                                  {valueDisplay}
+                                  {deltaEl}
+                                </div>
                               </td>
                             );
                           })}
@@ -826,6 +1269,9 @@ export function ScoreboardPage() {
             <div className={styles.averagesIsland}>
               <div className={styles.averagesHeader}>
                 <h3 className={styles.averagesTitle}>Period Averages</h3>
+                <p className={styles.averagesSubtitle}>
+                  Each metric is grouped by bank so the period average is clear at a glance.
+                </p>
               </div>
               <div className={styles.averagesScroll}>
                 {categoryOrder.map((category) => {
@@ -837,25 +1283,63 @@ export function ScoreboardPage() {
                         {category}
                       </h4>
                       {rows.map((row) => {
-                        let sum = 0;
-                        let count = 0;
-                        slices.forEach((slice) => {
-                          const valMap = valueByMetricBySlice[slice.id];
-                          if (valMap && valMap[row.metric] != null && !Number.isNaN(valMap[row.metric])) {
-                            sum += valMap[row.metric] as number;
-                            count++;
-                          }
-                        });
-                        const avg = count > 0 ? sum / count : null;
-                        const valueDisplay =
-                          avg !== null && !UNVERIFIED_METRICS.has(row.metric)
-                            ? formatCamelValue(row.metric, avg)
-                            : "—";
-
                         return (
                           <div key={row.metric} className={styles.averageRow}>
                             <span className={styles.averageMetric}>{row.metric}</span>
-                            <span className={styles.averageValue}>{valueDisplay}</span>
+                            <div className={styles.averageValuesByBank}>
+                              {orderedBankIds.map((bankId) => {
+                                const isDefault = bankId === defaultBankId;
+                                const bankColor = bankColorMap[bankId] ?? BANK_COLORS[0];
+                                const avg = avgByBankIdMetric[bankId]?.[row.metric] ?? null;
+                                const valueDisplay =
+                                  avg !== null && !UNVERIFIED_METRICS.has(row.metric)
+                                    ? formatCamelValue(row.metric, avg)
+                                    : "—";
+                                const accentColor = isDefault ? "var(--color-primary)" : bankColor.accent;
+                                const cardBackground = isDefault
+                                  ? "rgba(13, 148, 136, 0.08)"
+                                  : bankColor.bg === "transparent"
+                                    ? "var(--color-bg-subtle)"
+                                    : bankColor.bg;
+                                const badgeBackground = isDefault
+                                  ? "rgba(13, 148, 136, 0.14)"
+                                  : bankColor.headerBg === "transparent"
+                                    ? "var(--color-surface-elevated)"
+                                    : bankColor.headerBg;
+                                return (
+                                  <div
+                                    key={`${bankId}-${row.metric}`}
+                                    className={`${styles.averageValueCard} ${isDefault ? styles.defaultBankAverageCard : ""}`}
+                                    style={{
+                                      background: cardBackground,
+                                      borderColor: accentColor,
+                                    }}
+                                    title={isDefault ? "Default bank average" : `${bankId} average`}
+                                  >
+                                    <div className={styles.averageValueCardTop}>
+                                      <span
+                                        className={styles.averageBankBadge}
+                                        style={{
+                                          color: accentColor,
+                                          background: badgeBackground,
+                                          borderColor: accentColor,
+                                        }}
+                                      >
+                                        {isDefault ? <span className={styles.averageBankStar}>★</span> : null}
+                                        <span className={styles.averageBankName}>
+                                          {formatAverageBankLabel(bankId)}
+                                        </span>
+                                      </span>
+                                    </div>
+                                    <span
+                                      className={`${styles.averageValue} ${isDefault ? styles.defaultBankAverageValue : ""}`}
+                                    >
+                                      {valueDisplay}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
                         );
                       })}

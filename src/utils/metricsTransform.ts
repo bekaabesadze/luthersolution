@@ -17,6 +17,19 @@ const isGrowth = (name: string) => {
   return n === "growth" || n === "growth pct" || n === "growth %" || n.includes("growth");
 };
 
+const groupTopNWithOther = <T extends { value: number }>(
+  items: T[],
+  topN: number,
+  makeOther: (otherValue: number) => T
+): T[] => {
+  const sorted = [...items].sort((a, b) => b.value - a.value);
+  if (sorted.length <= topN) return sorted;
+  const top = sorted.slice(0, topN);
+  const otherValue = sorted.slice(topN).reduce((sum, item) => sum + item.value, 0);
+  if (!Number.isFinite(otherValue) || otherValue === 0) return top;
+  return [...top, makeOther(otherValue)];
+};
+
 const metricBreakdownBucket = (name: string): string | null => {
   const n = name.toLowerCase().replace(/[_\s]+/g, " ").trim();
   if (!n || isGrowth(n)) return null;
@@ -47,6 +60,15 @@ export function metricsToRevenueShare(metrics: MetricRow[]): { name: string; val
   return byBank.map(({ bank, revenue }) => ({ name: bank, value: revenue }));
 }
 
+/** Revenue share (grouped): top N banks + "Other". */
+export function metricsToRevenueShareGrouped(
+  metrics: MetricRow[],
+  topN: number = 5
+): { name: string; value: number }[] {
+  const byBank = metricsToRevenueByBank(metrics).map(({ bank, revenue }) => ({ name: bank, value: revenue }));
+  return groupTopNWithOther(byBank, topN, (otherValue) => ({ name: "Other", value: otherValue }));
+}
+
 /** Donut shape: { name, value }[] for metric type breakdown (Revenue, Net Profit, Deposits, Loans, etc.). */
 export function metricsToMetricBreakdown(metrics: MetricRow[]): { name: string; value: number }[] {
   const byMetric: Record<string, number> = {};
@@ -57,7 +79,7 @@ export function metricsToMetricBreakdown(metrics: MetricRow[]): { name: string; 
   }
   return Object.entries(byMetric)
     .filter(([, v]) => Number.isFinite(v) && Math.abs(v) > 0)
-    .map(([name, value]) => ({ name, value }))
+    .map(([name, value]) => ({ name, value: Math.abs(value) }))
     .sort((a, b) => b.value - a.value);
 }
 
@@ -70,6 +92,14 @@ export interface SummaryStats {
   totalDeposits: number;
   totalLoans: number;
   totalNetProfit: number;
+  /** Average revenue per bank-period (total revenue ÷ distinct bank×quarter observations). */
+  avgRevenue: number;
+  /** Average net profit per bank-period (total net profit ÷ distinct bank×quarter observations with profit data). */
+  avgProfit: number;
+  /** Number of bank-period observations used for avgRevenue calculation. */
+  revObservations: number;
+  /** Number of bank-period observations used for avgProfit calculation. */
+  profitObservations: number;
 }
 
 export function metricsToSummaryStats(metrics: MetricRow[]): SummaryStats {
@@ -80,10 +110,16 @@ export function metricsToSummaryStats(metrics: MetricRow[]): SummaryStats {
   let totalNetProfit = 0;
   const normalizeGrowthPercent = (value: number) => (Math.abs(value) <= 1 ? value * 100 : value);
 
+  // Track distinct (bank, year, quarter) observations per metric type for averages.
+  const revObsSet = new Set<string>();
+  const profitObsSet = new Set<string>();
+
   for (const m of metrics) {
     const name = (m.metric_name || "").toLowerCase();
+    const periodKey = `${m.bank_id}|${m.year}|${m.quarter}`;
     if (isRevenue(name)) {
       revenueByBank[m.bank_id] = (revenueByBank[m.bank_id] ?? 0) + m.value;
+      revObsSet.add(periodKey);
     } else if (isGrowth(name)) {
       growthValues.push(normalizeGrowthPercent(m.value));
     } else if (name.includes("deposit")) {
@@ -92,11 +128,17 @@ export function metricsToSummaryStats(metrics: MetricRow[]): SummaryStats {
       totalLoans += m.value;
     } else if (name.includes("profit") || name.includes("net income")) {
       totalNetProfit += m.value;
+      profitObsSet.add(periodKey);
     }
   }
 
   const totalRevenue = Object.values(revenueByBank).reduce((a, b) => a + b, 0);
   const bankCount = Object.keys(revenueByBank).length;
+  const revObservations = revObsSet.size;
+  const profitObservations = profitObsSet.size;
+  const avgRevenue = revObservations > 0 ? totalRevenue / revObservations : 0;
+  const avgProfit = profitObservations > 0 ? totalNetProfit / profitObservations : 0;
+
   const growthSeries = growthValues.length > 0 ? growthValues : metricsToQuarterlyGrowth(metrics).map((m) => m.growth);
   const hasAvgGrowthData = growthSeries.length > 0;
   const avgGrowthPct = hasAvgGrowthData
@@ -111,6 +153,10 @@ export function metricsToSummaryStats(metrics: MetricRow[]): SummaryStats {
     totalDeposits,
     totalLoans,
     totalNetProfit,
+    avgRevenue,
+    avgProfit,
+    revObservations,
+    profitObservations,
   };
 }
 
@@ -330,6 +376,52 @@ export function metricsToMarketShare(
       year: trend.year,
       quarterNum: trend.quarterNum,
       shares,
+    };
+  });
+}
+
+/** Market share (grouped): top N banks (by latest period value) + "Other" per quarter. */
+export function metricsToMarketShareGrouped(
+  metrics: MetricRow[],
+  metricMatcher: (name: string) => boolean,
+  topN: number = 5
+): MarketShareData[] {
+  const series = metricsToMarketShare(metrics, metricMatcher);
+  if (series.length === 0) return [];
+
+  const latest = series[series.length - 1];
+  const topBanks = latest.shares
+    .slice()
+    .sort((a, b) => b.value - a.value)
+    .slice(0, topN)
+    .map((s) => s.bank);
+  const topSet = new Set(topBanks);
+
+  return series.map((point) => {
+    const totalValue = point.shares.reduce((sum, s) => sum + s.value, 0);
+    const topShares = point.shares
+      .filter((s) => topSet.has(s.bank))
+      .map((s) => ({
+        bank: s.bank,
+        value: s.value,
+        share: totalValue > 0 ? (s.value / totalValue) * 100 : 0,
+      }))
+      .sort((a, b) => b.share - a.share);
+
+    const otherValue = point.shares.filter((s) => !topSet.has(s.bank)).reduce((sum, s) => sum + s.value, 0);
+    if (otherValue > 0) {
+      topShares.push({
+        bank: "Other",
+        value: otherValue,
+        share: totalValue > 0 ? (otherValue / totalValue) * 100 : 0,
+      });
+    }
+
+    return {
+      quarter: point.quarter,
+      year: point.year,
+      quarterNum: point.quarterNum,
+      shares: topShares,
     };
   });
 }
