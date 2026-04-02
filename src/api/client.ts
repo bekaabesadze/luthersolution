@@ -21,9 +21,8 @@ const PRODUCTION_API_BASE = "https://luthersolution.onrender.com";
 
 function getBaseUrl(): string {
   const fromEnv = import.meta.env.VITE_API_BASE_URL;
-  if (fromEnv) return fromEnv;
-  if (import.meta.env.PROD) return PRODUCTION_API_BASE;
-  return "http://localhost:8001";
+  const raw = fromEnv || (import.meta.env.PROD ? PRODUCTION_API_BASE : "http://localhost:8001");
+  return String(raw).replace(/\/+$/, "");
 }
 
 function getAuthHeader(): { Authorization: string } | {} {
@@ -232,7 +231,8 @@ export async function deleteUpload(
  * POST /forecast: build a predictive outlook for a primary bank and optional peers.
  */
 export async function getForecast(payload: ForecastRequest): Promise<ForecastResponse> {
-  const res = await fetch(`${getBaseUrl()}/forecast`, {
+  const baseUrl = getBaseUrl();
+  const res = await fetch(`${baseUrl}/forecast`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -244,9 +244,10 @@ export async function getForecast(payload: ForecastRequest): Promise<ForecastRes
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     if (res.status === 404) {
-      throw new Error(
-        "The predictive outlook API is not available on the deployed backend yet. Redeploy the backend service so /forecast exists."
-      );
+      const devHint = import.meta.env.DEV
+        ? " In dev, either run the latest backend (e.g. uvicorn in backend/ on the same port as VITE_API_BASE_URL) or set VITE_API_BASE_URL=https://luthersolution.onrender.com in .env.development (see repo file)."
+        : " Confirm VITE_API_BASE_URL points at an API that includes POST /forecast, or redeploy the backend.";
+      throw new Error(`POST /forecast returned 404 (called ${baseUrl}/forecast).${devHint}`);
     }
     throw new Error(formatErrorDetail(data.detail) || `Failed to load forecast (${res.status})`);
   }
