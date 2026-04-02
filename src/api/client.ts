@@ -19,14 +19,54 @@ import type {
 
 const PRODUCTION_API_BASE = "https://luthersolution.onrender.com";
 
+const TOKEN_KEY = "admin_token";
+/** API base URL the current JWT was issued for (must match getBaseUrl() or session is invalid). */
+const TOKEN_API_BASE_KEY = "admin_token_api_base";
+
 function getBaseUrl(): string {
   const fromEnv = import.meta.env.VITE_API_BASE_URL;
   const raw = fromEnv || (import.meta.env.PROD ? PRODUCTION_API_BASE : "http://localhost:8001");
   return String(raw).replace(/\/+$/, "");
 }
 
+/**
+ * Drop stored credentials if they were issued for a different API host (e.g. localhost vs Render).
+ * Call once at app startup. Legacy tokens without TOKEN_API_BASE_KEY are cleared once.
+ */
+export function syncAuthWithApiBase(): void {
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (!token) {
+    localStorage.removeItem(TOKEN_API_BASE_KEY);
+    return;
+  }
+  const bound = localStorage.getItem(TOKEN_API_BASE_KEY);
+  if (!bound || bound !== getBaseUrl()) {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(TOKEN_API_BASE_KEY);
+    window.dispatchEvent(new Event("auth-change"));
+  }
+}
+
+function clearAuthSession(): void {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(TOKEN_API_BASE_KEY);
+  window.dispatchEvent(new Event("auth-change"));
+}
+
+/** After a 401 on an authenticated request, clear session and throw a stable message. */
+function throwIfUnauthorizedAfterAuth(res: Response, data: unknown, fallbackStatusMessage: string): void {
+  if (res.ok) return;
+  if (res.status === 401) {
+    clearAuthSession();
+    throw new Error(
+      "Not signed in for this API. Log in again — tokens from another host (e.g. localhost) do not work on the hosted backend."
+    );
+  }
+  throw new Error(formatErrorDetail((data as { detail?: unknown }).detail) || fallbackStatusMessage);
+}
+
 function getAuthHeader(): { Authorization: string } | {} {
-  const token = localStorage.getItem("admin_token");
+  const token = localStorage.getItem(TOKEN_KEY);
   if (token) {
     return { Authorization: `Bearer ${token}` };
   }
@@ -56,8 +96,8 @@ export async function login(password: string): Promise<LoginResponse> {
 
   // Store token upon successful login
   if (data.access_token) {
-    localStorage.setItem("admin_token", data.access_token);
-    // Dispatch event so other components (like Sidebar) can update immediately
+    localStorage.setItem(TOKEN_KEY, data.access_token);
+    localStorage.setItem(TOKEN_API_BASE_KEY, getBaseUrl());
     window.dispatchEvent(new Event("auth-change"));
   }
 
@@ -65,8 +105,7 @@ export async function login(password: string): Promise<LoginResponse> {
 }
 
 export function logout() {
-  localStorage.removeItem("admin_token");
-  window.dispatchEvent(new Event("auth-change"));
+  clearAuthSession();
 }
 
 /**
@@ -107,10 +146,7 @@ export async function uploadFile(
       // If JSON parsing fails, use empty object
     }
 
-    if (!res.ok) {
-      const message = formatErrorDetail(data.detail);
-      throw new Error(message || `Upload failed (${res.status})`);
-    }
+    throwIfUnauthorizedAfterAuth(res, data, `Upload failed (${res.status})`);
 
     return data as UploadResponse;
   } catch (err) {
@@ -193,9 +229,7 @@ export async function uploadCamelExcel(
     body: formData,
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(formatErrorDetail(data.detail) || `CAMEL Excel upload failed (${res.status})`);
-  }
+  throwIfUnauthorizedAfterAuth(res, data, `CAMEL Excel upload failed (${res.status})`);
   return data as UploadResponse;
 }
 
@@ -221,9 +255,7 @@ export async function deleteUpload(
   });
 
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(formatErrorDetail(data.detail) || `Delete failed (${res.status})`);
-  }
+  throwIfUnauthorizedAfterAuth(res, data, `Delete failed (${res.status})`);
   return data as DeleteUploadResponse;
 }
 
@@ -249,7 +281,7 @@ export async function getForecast(payload: ForecastRequest): Promise<ForecastRes
         : " Confirm VITE_API_BASE_URL points at an API that includes POST /forecast, or redeploy the backend.";
       throw new Error(`POST /forecast returned 404 (called ${baseUrl}/forecast).${devHint}`);
     }
-    throw new Error(formatErrorDetail(data.detail) || `Failed to load forecast (${res.status})`);
+    throwIfUnauthorizedAfterAuth(res, data, `Failed to load forecast (${res.status})`);
   }
 
   return data as ForecastResponse;
