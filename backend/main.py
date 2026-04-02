@@ -10,6 +10,14 @@ import os
 import io
 from typing import List, Optional
 
+env_path = os.path.join(os.path.dirname(__file__), ".env")
+if os.path.exists(env_path):
+    with open(env_path) as f:
+        for line in f:
+            if line.strip() and not line.startswith("#"):
+                key, val = line.split("=", 1)
+                os.environ[key.strip()] = val.strip().strip("\"'")
+
 from datetime import datetime, timedelta
 import jwt
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, Query, status
@@ -28,9 +36,12 @@ from schemas import (
     DeleteUploadResponse,
     MetricResponse,
     MetricsListResponse,
+    ForecastRequest,
+    ForecastResponse,
 )
 from xbrl_parser import parse_xbrl_file
 from camel_excel_parser import parse_camel_excel_from_filelike
+from forecasting import build_forecast_response, SUPPORTED_QUERY_METRICS, MAX_FORECAST_HORIZON
 
 # -----------------------------------------------------------------------------
 # App and CORS
@@ -119,8 +130,10 @@ frontend_url = os.environ.get("FRONTEND_URL", "")
 allowed_origins = [
     "http://localhost:3000",
     "http://localhost:5173",
+    "http://localhost:4000",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:5173",
+    "http://127.0.0.1:4000",
     "http://127.0.0.1:8000",
     "http://luthersolution.com",
     "https://luthersolution.com",  # in case frontend is proxied
@@ -136,6 +149,8 @@ if frontend_url:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
+    # Allow any localhost/127.0.0.1 port in dev (Vite may auto-pick 5174, 5175, etc.)
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -155,8 +170,21 @@ def startup() -> None:
 
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon() -> Response:
-    """Return 204 so the browser stops requesting /favicon.ico and no 404 is logged."""
-    return Response(status_code=204)
+    """Serve the CBA logo as the site's favicon."""
+    icon_path = os.path.join(
+        os.path.dirname(__file__),
+        "..",
+        "public",
+        "icons",
+        "icon-192.png",
+    )
+    try:
+        with open(icon_path, "rb") as f:
+            content = f.read()
+        return Response(content=content, media_type="image/png")
+    except FileNotFoundError:
+        # Keep the previous behavior if the icon files haven't been created yet.
+        return Response(status_code=204)
 
 
 # -----------------------------------------------------------------------------
@@ -453,6 +481,68 @@ def list_quarters(db: Session = Depends(get_db)) -> dict:
         .all()
     )
     return {"quarters": [{"year": r[0], "quarter": r[1]} for r in rows]}
+
+
+@app.post("/forecast", response_model=ForecastResponse)
+def forecast_outlook(
+    payload: ForecastRequest,
+    db: Session = Depends(get_db),
+    admin: str = Depends(get_current_admin),
+) -> ForecastResponse:
+    """
+    Build a 4-quarter predictive outlook for one primary bank and up to 4 peers.
+
+    Forecasting is intentionally conservative:
+    - only a curated set of raw XBRL-backed metrics are projected forward
+    - derived CAMEL-style ratios are recomputed from those projected drivers
+    - metrics need at least 4 quarters of history to receive forecast values
+    """
+    primary_bank_id = payload.primary_bank_id.strip()
+    if not primary_bank_id:
+        raise HTTPException(status_code=400, detail="primary_bank_id is required.")
+
+    raw_peers = [bank_id.strip() for bank_id in payload.peer_bank_ids if bank_id and bank_id.strip()]
+    deduped_peers: List[str] = []
+    seen_peers = set()
+    for peer_bank_id in raw_peers:
+        if peer_bank_id == primary_bank_id or peer_bank_id in seen_peers:
+            continue
+        seen_peers.add(peer_bank_id)
+        deduped_peers.append(peer_bank_id)
+
+    if len(deduped_peers) > 4:
+        raise HTTPException(status_code=400, detail="A maximum of 4 peer_bank_ids is allowed.")
+
+    bank_rows = db.query(QuarterlyMetric.bank_id).distinct().all()
+    known_banks = {row[0] for row in bank_rows}
+    if primary_bank_id not in known_banks:
+        raise HTTPException(status_code=404, detail=f"Unknown primary bank: {primary_bank_id}")
+
+    invalid_peers = [bank_id for bank_id in deduped_peers if bank_id not in known_banks]
+    if invalid_peers:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown peer bank(s): {', '.join(sorted(invalid_peers))}",
+        )
+
+    horizon_quarters = max(1, min(int(payload.horizon_quarters or MAX_FORECAST_HORIZON), MAX_FORECAST_HORIZON))
+    bank_scope = [primary_bank_id, *deduped_peers]
+
+    rows = (
+        db.query(QuarterlyMetric)
+        .filter(QuarterlyMetric.bank_id.in_(bank_scope))
+        .filter(QuarterlyMetric.metric_name.in_(sorted(SUPPORTED_QUERY_METRICS)))
+        .order_by(QuarterlyMetric.bank_id, QuarterlyMetric.year, QuarterlyMetric.quarter, QuarterlyMetric.metric_name)
+        .all()
+    )
+
+    response_payload = build_forecast_response(
+        rows,
+        primary_bank_id=primary_bank_id,
+        peer_bank_ids=deduped_peers,
+        horizon_quarters=horizon_quarters,
+    )
+    return ForecastResponse(**response_payload)
 
 
 @app.delete("/upload", response_model=DeleteUploadResponse)
