@@ -495,13 +495,12 @@ export function ScoreboardPage() {
   }, [loadBanks]);
 
   // When bank changes, load metrics for this bank and cache; derive quarters for selector.
+  // If no columns exist yet, auto-populate up to 5 years; otherwise, preserve existing columns.
   useEffect(() => {
     if (!selectedBank) {
       setQuarters([]);
       setSelectedYear(null);
       setSelectedQuarter(null);
-      setSlices([]);
-      setDefaultBankId("");
       return;
     }
     let cancelled = false;
@@ -517,18 +516,29 @@ export function ScoreboardPage() {
           const latest = qList[0];
           setSelectedYear(latest.year);
           setSelectedQuarter(latest.quarter);
-          // Show only the most recent quarter by default — use "Add column" for more.
-          setSlices([{
-            id: `slice-${selectedBank}-${latest.year}-${latest.quarter}`,
-            bankId: selectedBank,
-            year: latest.year,
-            quarter: latest.quarter,
-          }]);
-        } else {
-          setSlices([]);
+          // Only auto-populate default columns when the table is empty.
+          // This preserves existing columns when switching between banks.
+          setSlices((prev) => {
+            if (prev.length > 0) return prev;
+            const yearsSeen = new Set<number>();
+            const defaultSlices: CamelSlice[] = [];
+            for (const q of qList) {
+              if (yearsSeen.size >= 5) break;
+              if (!yearsSeen.has(q.year)) {
+                yearsSeen.add(q.year);
+                defaultSlices.push({
+                  id: `slice-${selectedBank}-${q.year}-${q.quarter}`,
+                  bankId: selectedBank,
+                  year: q.year,
+                  quarter: q.quarter,
+                });
+              }
+            }
+            return defaultSlices;
+          });
+          // Set default bank only if not already set.
+          setDefaultBankId((prev) => prev || selectedBank);
         }
-        // The newly-selected bank is the default reference.
-        setDefaultBankId(selectedBank);
         setMetricsLoading(false);
       })
       .catch(() => {
@@ -809,8 +819,8 @@ export function ScoreboardPage() {
         <div className={styles.filters}>
           <label className={styles.filterLabel}>
             <span className={styles.filterLabelText}>
-              Primary Bank
-              {selectedBank && <span className={styles.defaultBadge}>★ Default</span>}
+              Select Bank
+              {selectedBank && defaultBankId === selectedBank && <span className={styles.defaultBadge}>★ Default</span>}
             </span>
             <div className={styles.filterSelectWrap}>
               <CustomSelect

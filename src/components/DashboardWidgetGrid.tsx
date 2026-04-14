@@ -53,7 +53,7 @@ export interface DashboardLayoutItem {
 }
 
 export interface DashboardLayoutState {
-  version: 1;
+  version: number;
   grid: Layout[];
   slots: DashboardLayoutItem[];
 }
@@ -70,9 +70,8 @@ const AutoWidthGridLayout = WidthProvider(GridLayout);
 const rowHeightPx = 44;
 const marginPx: [number, number] = [16, 16];
 const averageWidgetIds = new Set<DashboardWidgetId>([
-  "summary.avgGrowth",
-  "summary.avgRevenue",
-  "summary.avgProfit",
+  "summary.loanGrowth",
+  "summary.depositGrowth",
 ]);
 
 const byId = <T extends { slotId: string }>(arr: T[]) => new Map(arr.map((x) => [x.slotId, x]));

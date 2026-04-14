@@ -12,7 +12,7 @@ const navItems = [
   { to: "/upload", label: "Upload Data" },
   { to: "/dashboard", label: "Dashboard" },
   { to: "/outlook", label: "Outlook" },
-  { to: "/camel", label: "CAMEL" },
+  { to: "/camels", label: "CAMELS" },
   { to: "/files", label: "Files" },
   { to: "/reports", label: "Reports" },
 ];

@@ -17,6 +17,91 @@
   }
 }
 
+/* ── Instructions card ── */
+.instructionsCard {
+  border-radius: 1.25rem;
+  padding: 1.5rem 1.75rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 1.5rem;
+  animation: cardEnter 0.35s ease-out both;
+}
+
+.instructionsTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 0.75rem 0;
+}
+
+.instructionsList {
+  margin: 0 0 0.75rem 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.instructionsList li::marker {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.instructionsList strong {
+  color: var(--color-text);
+}
+
+.instructionsNote {
+  font-size: 0.8125rem;
+  color: var(--color-text-subtle);
+  margin: 0 0 0.75rem 0;
+  line-height: 1.5;
+}
+
+.instructionsDetails {
+  border-top: 1px solid var(--color-border);
+  padding-top: 0.75rem;
+}
+
+.instructionsSummary {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-primary-light);
+  cursor: pointer;
+  user-select: none;
+}
+
+.instructionsSummary:hover {
+  color: var(--color-accent);
+}
+
+.instructionsDetailText {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  margin: 0.5rem 0 0;
+  line-height: 1.5;
+}
+
+.instructionsLink {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.instructionsLink:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .instructionsCard {
+    padding: 1rem 1.25rem;
+    border-radius: 1rem;
+  }
+}
+
 /* ── Card island ── */
 .uploadCard {
   border-radius: 1.5rem;

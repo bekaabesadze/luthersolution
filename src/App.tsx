@@ -26,8 +26,9 @@ export function App() {
         <Route path="/" element={<Layout />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
-          <Route path="camel" element={<ScoreboardPage />} />
-          <Route path="scoreboard" element={<Navigate to="/camel" replace />} />
+          <Route path="camels" element={<ScoreboardPage />} />
+          <Route path="camel" element={<Navigate to="/camels" replace />} />
+          <Route path="scoreboard" element={<Navigate to="/camels" replace />} />
           <Route path="login" element={<LoginPage />} />
 
           {/* Protected Admin Routes */}

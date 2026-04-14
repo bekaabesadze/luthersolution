@@ -1,21 +1,21 @@
 import type { ReactNode } from "react";
 import type { MetricRow } from "../api/types";
 import type { MetricsTableRow } from "../components/MetricsTable";
-import type { SummaryStats as SummaryStatsType } from "../utils/metricsTransform";
+import type { DashboardCamelsResult } from "../utils/dashboardCamelsKpis";
 import { RevenueBarChart } from "../components/RevenueBarChart";
 import { DonutChart } from "../components/DonutChart";
 import { GrowthLineChart } from "../components/GrowthLineChart";
 import { MetricsTable } from "../components/MetricsTable";
 
 export type DashboardWidgetId =
-  | "summary.totalRevenue"
-  | "summary.bankCount"
-  | "summary.avgGrowth"
-  | "summary.totalDeposits"
-  | "summary.totalLoans"
-  | "summary.netProfit"
-  | "summary.avgRevenue"
-  | "summary.avgProfit"
+  | "summary.roaa"
+  | "summary.roae"
+  | "summary.nim"
+  | "summary.costOfFunds"
+  | "summary.yieldOnLoans"
+  | "summary.loanToDeposit"
+  | "summary.loanGrowth"
+  | "summary.depositGrowth"
   | "chart.revenueByBank"
   | "chart.revenueShare"
   | "chart.metricBreakdown"
@@ -32,7 +32,8 @@ export interface DashboardWidgetSlotSize {
 }
 
 export interface DashboardWidgetRenderCtx {
-  summaryStats: SummaryStatsType;
+  camelsKpis: DashboardCamelsResult;
+  hasSelectedBank: boolean;
   revenueData: { bank: string; revenue: number }[];
   revenueShareData: { name: string; value: number }[];
   metricBreakdownData: { name: string; value: number }[];
@@ -55,15 +56,6 @@ export interface DashboardWidgetDefinition {
   defaultH: number;
   render: (ctx: DashboardWidgetRenderCtx) => ReactNode;
 }
-
-const formatShort = (v: number) =>
-  v >= 1e9
-    ? `${(v / 1e9).toFixed(1)}B`
-    : v >= 1e6
-      ? `${(v / 1e6).toFixed(1)}M`
-      : v >= 1e3
-        ? `${(v / 1e3).toFixed(1)}k`
-        : v.toLocaleString();
 
 const kpiStyles = {
   label: {
@@ -122,10 +114,29 @@ const kpiStyles = {
     WebkitBoxOrient: "vertical" as const,
     WebkitLineClamp: 2,
   },
+  peerRow: {
+    display: "flex",
+    alignItems: "baseline",
+    gap: "0.5rem",
+    marginTop: "0.15rem",
+  },
+  peerLabel: {
+    fontSize: "clamp(0.62rem, 1vw, 0.7rem)",
+    fontWeight: 600,
+    color: "var(--color-text-subtle)",
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.04em",
+    flexShrink: 0,
+  },
+  peerValue: {
+    fontSize: "clamp(0.78rem, 1.5vw, 0.92rem)",
+    fontWeight: 700,
+    color: "var(--color-text-muted)",
+    fontVariantNumeric: "tabular-nums" as const,
+  },
 };
 
 const isKpiCompact = (slotSize?: { h: number }) => {
-  // h=2 is the typical KPI tile; treat it as compact (keep only the essentials).
   return !slotSize || slotSize.h <= 2;
 };
 
@@ -142,190 +153,220 @@ function topNWithOther<T extends { value: number }>(data: T[], n: number): T[] {
   return [...head, { ...(head[0] as any), name: "Other", value: tailSum }];
 }
 
+function formatPct(v: number | null): string {
+  if (v === null) return "—";
+  return `${(v * 100).toFixed(2)}%`;
+}
+
+function formatRatio(v: number | null): string {
+  if (v === null) return "—";
+  return `${(v * 100).toFixed(1)}%`;
+}
+
+/** Render a CAMELS KPI card with bank value and peer avg. */
+function renderCamelsKpi(
+  label: string,
+  bankValue: number | null,
+  peerAvg: number | null,
+  hasSelectedBank: boolean,
+  format: (v: number | null) => string,
+  compact: boolean,
+  _peerCount: number,
+  bankCount: number,
+) {
+  const displayValue = hasSelectedBank ? bankValue : peerAvg;
+  return (
+    <div>
+      <div style={compact ? kpiStyles.label : kpiStyles.labelLarge}>{label}</div>
+      <div style={compact ? kpiStyles.value : kpiStyles.valueLarge}>{format(displayValue)}</div>
+      {hasSelectedBank && peerAvg !== null ? (
+        <div style={kpiStyles.peerRow}>
+          <span style={kpiStyles.peerLabel}>Peer avg</span>
+          <span style={kpiStyles.peerValue}>{format(peerAvg)}</span>
+        </div>
+      ) : (
+        <div style={compact ? { ...kpiStyles.sub, opacity: 0.9, marginTop: "0.2rem" } : kpiStyles.subLarge}>
+          {hasSelectedBank ? "—" : `avg of ${bankCount} bank${bankCount !== 1 ? "s" : ""}`}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export const dashboardWidgetRegistry: DashboardWidgetDefinition[] = [
   {
-    id: "summary.totalRevenue",
-    label: "Total revenue",
+    id: "summary.roaa",
+    label: "ROAA",
     category: "KPI",
     minW: 2,
     minH: 2,
-    defaultW: 2,
+    defaultW: 3,
     defaultH: 2,
-    render: ({ summaryStats, slotSize }) => {
+    render: ({ camelsKpis, hasSelectedBank, slotSize }) => {
       const compact = isKpiCompact(slotSize);
-      return (
-        <div>
-          <div style={compact ? kpiStyles.label : kpiStyles.labelLarge}>Total revenue</div>
-          <div style={compact ? kpiStyles.value : kpiStyles.valueLarge}>{formatShort(summaryStats.totalRevenue)}</div>
-          <div style={compact ? { ...kpiStyles.sub, opacity: 0.9, marginTop: "0.2rem" } : kpiStyles.subLarge}>
-            {summaryStats.totalRevenue > 0 ? summaryStats.totalRevenue.toLocaleString() : "—"}
-          </div>
-        </div>
+      return renderCamelsKpi(
+        "ROAA",
+        camelsKpis.subjectBank?.roaa ?? null,
+        camelsKpis.peerAverage.roaa,
+        hasSelectedBank,
+        formatPct,
+        compact,
+        camelsKpis.peerCount,
+        camelsKpis.bankCount,
       );
     },
   },
   {
-    id: "summary.bankCount",
-    label: "Banks",
+    id: "summary.roae",
+    label: "ROAE",
     category: "KPI",
     minW: 2,
     minH: 2,
-    defaultW: 2,
+    defaultW: 3,
     defaultH: 2,
-    render: ({ summaryStats, slotSize }) => {
+    render: ({ camelsKpis, hasSelectedBank, slotSize }) => {
       const compact = isKpiCompact(slotSize);
-      return (
-        <div>
-          <div style={compact ? kpiStyles.label : kpiStyles.labelLarge}>Banks</div>
-          <div style={compact ? kpiStyles.value : kpiStyles.valueLarge}>{summaryStats.bankCount}</div>
-          <div style={compact ? { ...kpiStyles.sub, opacity: 0.9, marginTop: "0.2rem" } : kpiStyles.subLarge}>
-            in selection
-          </div>
-        </div>
+      return renderCamelsKpi(
+        "ROAE",
+        camelsKpis.subjectBank?.roae ?? null,
+        camelsKpis.peerAverage.roae,
+        hasSelectedBank,
+        formatPct,
+        compact,
+        camelsKpis.peerCount,
+        camelsKpis.bankCount,
       );
     },
   },
   {
-    id: "summary.avgGrowth",
-    label: "Avg growth",
+    id: "summary.nim",
+    label: "NIM",
     category: "KPI",
     minW: 2,
     minH: 2,
-    defaultW: 2,
+    defaultW: 3,
     defaultH: 2,
-    render: ({ summaryStats, slotSize }) => {
+    render: ({ camelsKpis, hasSelectedBank, slotSize }) => {
       const compact = isKpiCompact(slotSize);
-      return (
-        <div>
-          <div style={compact ? kpiStyles.label : kpiStyles.labelLarge}>Avg growth</div>
-          <div style={compact ? kpiStyles.value : kpiStyles.valueLarge}>{summaryStats.hasAvgGrowthData ? `${summaryStats.avgGrowthPct.toFixed(1)}%` : "—"}</div>
-          <div style={compact ? { ...kpiStyles.sub, opacity: 0.9, marginTop: "0.2rem" } : kpiStyles.subLarge}>
-            quarterly
-          </div>
-        </div>
+      return renderCamelsKpi(
+        "Net Interest Margin",
+        camelsKpis.subjectBank?.nim ?? null,
+        camelsKpis.peerAverage.nim,
+        hasSelectedBank,
+        formatPct,
+        compact,
+        camelsKpis.peerCount,
+        camelsKpis.bankCount,
       );
     },
   },
   {
-    id: "summary.totalDeposits",
-    label: "Total deposits",
+    id: "summary.costOfFunds",
+    label: "Cost of Funds",
     category: "KPI",
     minW: 2,
     minH: 2,
-    defaultW: 2,
+    defaultW: 3,
     defaultH: 2,
-    render: ({ summaryStats, slotSize }) => {
+    render: ({ camelsKpis, hasSelectedBank, slotSize }) => {
       const compact = isKpiCompact(slotSize);
-      return (
-        <div>
-          <div style={compact ? kpiStyles.label : kpiStyles.labelLarge}>Total deposits</div>
-          <div style={compact ? kpiStyles.value : kpiStyles.valueLarge}>{summaryStats.totalDeposits > 0 ? formatShort(summaryStats.totalDeposits) : "—"}</div>
-          <div style={compact ? { ...kpiStyles.sub, opacity: 0.9, marginTop: "0.2rem" } : kpiStyles.subLarge}>
-            {summaryStats.totalDeposits > 0 ? summaryStats.totalDeposits.toLocaleString() : "No data"}
-          </div>
-        </div>
+      return renderCamelsKpi(
+        "Cost of Funds",
+        camelsKpis.subjectBank?.costOfFunds ?? null,
+        camelsKpis.peerAverage.costOfFunds,
+        hasSelectedBank,
+        formatPct,
+        compact,
+        camelsKpis.peerCount,
+        camelsKpis.bankCount,
       );
     },
   },
   {
-    id: "summary.totalLoans",
-    label: "Total loans",
+    id: "summary.yieldOnLoans",
+    label: "Yield on Loans",
     category: "KPI",
     minW: 2,
     minH: 2,
-    defaultW: 2,
+    defaultW: 3,
     defaultH: 2,
-    render: ({ summaryStats, slotSize }) => {
+    render: ({ camelsKpis, hasSelectedBank, slotSize }) => {
       const compact = isKpiCompact(slotSize);
-      return (
-        <div>
-          <div style={compact ? kpiStyles.label : kpiStyles.labelLarge}>Total loans</div>
-          <div style={compact ? kpiStyles.value : kpiStyles.valueLarge}>{summaryStats.totalLoans > 0 ? formatShort(summaryStats.totalLoans) : "—"}</div>
-          <div style={compact ? { ...kpiStyles.sub, opacity: 0.9, marginTop: "0.2rem" } : kpiStyles.subLarge}>
-            {summaryStats.totalLoans > 0 ? summaryStats.totalLoans.toLocaleString() : "No data"}
-          </div>
-        </div>
+      return renderCamelsKpi(
+        "Yield on Loans",
+        camelsKpis.subjectBank?.yieldOnLoans ?? null,
+        camelsKpis.peerAverage.yieldOnLoans,
+        hasSelectedBank,
+        formatPct,
+        compact,
+        camelsKpis.peerCount,
+        camelsKpis.bankCount,
       );
     },
   },
   {
-    id: "summary.netProfit",
-    label: "Net profit",
+    id: "summary.loanToDeposit",
+    label: "Loan to Deposit",
     category: "KPI",
     minW: 2,
     minH: 2,
-    defaultW: 2,
+    defaultW: 3,
     defaultH: 2,
-    render: ({ summaryStats, slotSize }) => {
+    render: ({ camelsKpis, hasSelectedBank, slotSize }) => {
       const compact = isKpiCompact(slotSize);
-      return (
-        <div>
-          <div style={compact ? kpiStyles.label : kpiStyles.labelLarge}>Net profit</div>
-          <div style={compact ? kpiStyles.value : kpiStyles.valueLarge}>{summaryStats.totalNetProfit !== 0 ? formatShort(summaryStats.totalNetProfit) : "—"}</div>
-          <div style={compact ? { ...kpiStyles.sub, opacity: 0.9, marginTop: "0.2rem" } : kpiStyles.subLarge}>
-            {summaryStats.totalNetProfit !== 0 ? summaryStats.totalNetProfit.toLocaleString() : "No data"}
-          </div>
-        </div>
+      return renderCamelsKpi(
+        "Loan to Deposit",
+        camelsKpis.subjectBank?.loanToDeposit ?? null,
+        camelsKpis.peerAverage.loanToDeposit,
+        hasSelectedBank,
+        formatRatio,
+        compact,
+        camelsKpis.peerCount,
+        camelsKpis.bankCount,
       );
     },
   },
   {
-    id: "summary.avgRevenue",
-    label: "Avg revenue",
+    id: "summary.loanGrowth",
+    label: "Loan Growth",
     category: "KPI",
     minW: 2,
     minH: 2,
-    defaultW: 2,
+    defaultW: 3,
     defaultH: 2,
-    render: ({ summaryStats, slotSize }) => {
+    render: ({ camelsKpis, hasSelectedBank, slotSize }) => {
       const compact = isKpiCompact(slotSize);
-      const { avgRevenue, revObservations } = summaryStats;
-      const hasData = avgRevenue > 0 && revObservations > 0;
-      return (
-        <div>
-          <div style={compact ? kpiStyles.label : kpiStyles.labelLarge}>Avg revenue</div>
-          <div style={compact ? kpiStyles.value : kpiStyles.valueLarge}>
-            {hasData ? formatShort(avgRevenue) : "—"}
-          </div>
-          <div style={compact ? { ...kpiStyles.sub, opacity: 0.9, marginTop: "0.2rem" } : kpiStyles.subLarge}>
-            {hasData
-              ? `per bank-period · ${revObservations} obs.`
-              : "No revenue data"}
-          </div>
-        </div>
+      return renderCamelsKpi(
+        "Loan Growth",
+        camelsKpis.subjectBank?.loanGrowthRate ?? null,
+        camelsKpis.peerAverage.loanGrowthRate,
+        hasSelectedBank,
+        formatRatio,
+        compact,
+        camelsKpis.peerCount,
+        camelsKpis.bankCount,
       );
     },
   },
   {
-    id: "summary.avgProfit",
-    label: "Avg profit",
+    id: "summary.depositGrowth",
+    label: "Deposit Growth",
     category: "KPI",
     minW: 2,
     minH: 2,
-    defaultW: 2,
+    defaultW: 3,
     defaultH: 2,
-    render: ({ summaryStats, slotSize }) => {
+    render: ({ camelsKpis, hasSelectedBank, slotSize }) => {
       const compact = isKpiCompact(slotSize);
-      const { avgProfit, profitObservations } = summaryStats;
-      const hasData = avgProfit !== 0 && profitObservations > 0;
-      const isNegative = avgProfit < 0;
-      return (
-        <div>
-          <div style={compact ? kpiStyles.label : kpiStyles.labelLarge}>Avg profit</div>
-          <div
-            style={{
-              ...(compact ? kpiStyles.value : kpiStyles.valueLarge),
-              color: isNegative ? "var(--color-danger)" : "var(--color-primary)",
-            }}
-          >
-            {hasData ? (isNegative ? `−${formatShort(Math.abs(avgProfit))}` : formatShort(avgProfit)) : "—"}
-          </div>
-          <div style={compact ? { ...kpiStyles.sub, opacity: 0.9, marginTop: "0.2rem" } : kpiStyles.subLarge}>
-            {hasData
-              ? `per bank-period · ${profitObservations} obs.`
-              : "No profit data"}
-          </div>
-        </div>
+      return renderCamelsKpi(
+        "Deposit Growth",
+        camelsKpis.subjectBank?.depositGrowthRate ?? null,
+        camelsKpis.peerAverage.depositGrowthRate,
+        hasSelectedBank,
+        formatRatio,
+        compact,
+        camelsKpis.peerCount,
+        camelsKpis.bankCount,
       );
     },
   },
@@ -433,4 +474,3 @@ export const dashboardWidgetRegistry: DashboardWidgetDefinition[] = [
 export function getDashboardWidgetDefinition(id: DashboardWidgetId): DashboardWidgetDefinition | undefined {
   return dashboardWidgetRegistry.find((w) => w.id === id);
 }
-

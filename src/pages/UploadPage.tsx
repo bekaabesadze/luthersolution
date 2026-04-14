@@ -181,6 +181,27 @@ export function UploadPage() {
   return (
     <div className={styles.page}>
 
+      <div className={styles.instructionsCard}>
+        <h3 className={styles.instructionsTitle}>How to Upload Data</h3>
+        <ol className={styles.instructionsList}>
+          <li><strong>Select a bank</strong> — choose an existing bank from the dropdown, or add a new one.</li>
+          <li><strong>Set the reporting period</strong> — pick the year and quarter the file covers.</li>
+          <li><strong>Upload the XBRL file</strong> — drag and drop (or click to browse) the call report file for that bank and period.</li>
+          <li><strong>Repeat</strong> — after a successful upload, the form advances to the previous quarter so you can upload the next file in sequence.</li>
+        </ol>
+        <p className={styles.instructionsNote}>
+          Each upload associates the file's metrics with the selected bank and period.
+          Upload multiple quarters per bank to enable trend analysis and CAMELS scoring.
+        </p>
+        <details className={styles.instructionsDetails}>
+          <summary className={styles.instructionsSummary}>Where do I get the data files?</summary>
+          <p className={styles.instructionsDetailText}>
+            Individual call report XBRL files can be downloaded from the
+            {" "}<a href="https://cdr.ffiec.gov/public/" target="_blank" rel="noopener noreferrer" className={styles.instructionsLink}>FFIEC Central Data Repository (CDR)</a>.
+            Navigate to the institution, select the reporting period, and download the XBRL file.
+          </p>
+        </details>
+      </div>
 
       <div className={styles.uploadCard}>
         <form onSubmit={handleSubmit} className={styles.form}>

@@ -1,7 +1,8 @@
 /**
  * DashboardPage.tsx
  * Fetches data from backend GET /banks, GET /quarters, GET /metrics.
- * Shows summary stats, bar chart, donut charts (revenue share, metric breakdown), line chart, and table.
+ * Shows CAMELS KPI cards (ROAA, ROAE, NIM, Cost of Funds, Yield on Loans,
+ * Loan to Deposit, Growth Rates) with bank vs peer average, plus charts and table.
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -10,7 +11,6 @@ import { ExpandedRevenueShare } from "../components/ExpandedRevenueShare";
 import { ExpandedMetricBreakdown } from "../components/ExpandedMetricBreakdown";
 import { ExpandedGrowthChart } from "../components/ExpandedGrowthChart";
 import { ExpandedMetricsTable } from "../components/ExpandedMetricsTable";
-import { ExpandedSummaryStat } from "../components/ExpandedSummaryStat";
 import { CustomSelect } from "../components/CustomSelect";
 import { DashboardWidgetGrid } from "../components/DashboardWidgetGrid";
 import { getBanks, getQuarters, getMetrics } from "../api/client";
@@ -20,8 +20,8 @@ import {
   metricsToMetricBreakdown,
   metricsToQuarterlyGrowth,
   metricsToTableRows,
-  metricsToSummaryStats,
 } from "../utils/metricsTransform";
+import { computeDashboardCamelsKpis } from "../utils/dashboardCamelsKpis";
 import type { MetricsTableRow } from "../components/MetricsTable";
 import type { MetricRow } from "../api/types";
 import type { DashboardWidgetId } from "../config/dashboardWidgetRegistry";
@@ -37,7 +37,6 @@ export function DashboardPage() {
   const [revenueData, setRevenueData] = useState(emptyRevenue);
   const [growthData, setGrowthData] = useState(emptyGrowth);
   const [tableData, setTableData] = useState<MetricsTableRow[]>([]);
-  const [summaryStats, setSummaryStats] = useState(metricsToSummaryStats([]));
   const [revenueShareData, setRevenueShareData] = useState<{ name: string; value: number }[]>([]);
   const [metricBreakdownData, setMetricBreakdownData] = useState<{ name: string; value: number }[]>([]);
 
@@ -53,8 +52,9 @@ export function DashboardPage() {
   const [growthBankPickerOpen, setGrowthBankPickerOpen] = useState(false);
   const growthBankPickerRef = useRef<HTMLDivElement>(null);
   const [expandedChart, setExpandedChart] = useState<"revenue" | "revenueShare" | "metricBreakdown" | "quarterlyGrowth" | "metricsTable" | null>(null);
-  const [expandedSummaryStat, setExpandedSummaryStat] = useState<"totalRevenue" | "bankCount" | "avgGrowth" | "totalDeposits" | "totalLoans" | "netProfit" | "avgRevenue" | "avgProfit" | null>(null);
   const [rawMetrics, setRawMetrics] = useState<MetricRow[]>([]);
+  /** All metrics (unfiltered by bank/year/quarter) for computing CAMELS KPIs across all banks. */
+  const [allMetrics, setAllMetrics] = useState<MetricRow[]>([]);
   const [dashboardLayout, setDashboardLayout] = useState(() => loadDashboardLayoutState());
   const [editMode, setEditMode] = useState(false);
 
@@ -63,7 +63,6 @@ export function DashboardPage() {
     setError(null);
 
     try {
-      // Connection: fetch filter options and metrics from backend
       const [banksRes, quartersRes, metricsRes] = await Promise.all([
         getBanks(),
         getQuarters(),
@@ -83,26 +82,32 @@ export function DashboardPage() {
         setRevenueData(metricsToRevenueByBank(metrics));
         setGrowthData(metricsToQuarterlyGrowth(metrics));
         setTableData(metricsToTableRows(metrics));
-        setSummaryStats(metricsToSummaryStats(metrics));
         setRevenueShareData(metricsToRevenueShareGrouped(metrics, 5));
         setMetricBreakdownData(metricsToMetricBreakdown(metrics));
       } else {
         setRevenueData(emptyRevenue);
         setGrowthData(emptyGrowth);
         setTableData([]);
-        setSummaryStats(metricsToSummaryStats([]));
         setRevenueShareData([]);
         setMetricBreakdownData([]);
+      }
+
+      // Also fetch all metrics (no filters) for CAMELS KPI peer comparison
+      if (filterBank || filterYear || filterQuarter) {
+        const allRes = await getMetrics();
+        setAllMetrics(allRes.metrics);
+      } else {
+        setAllMetrics(metrics);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load dashboard data");
       setRevenueData(emptyRevenue);
       setGrowthData(emptyGrowth);
       setTableData([]);
-      setSummaryStats(metricsToSummaryStats([]));
       setRevenueShareData([]);
       setMetricBreakdownData([]);
       setRawMetrics([]);
+      setAllMetrics([]);
     } finally {
       setLoading(false);
     }
@@ -189,7 +194,6 @@ export function DashboardPage() {
     if (growthBanks.length === 1) {
       return metricsToQuarterlyGrowth(rawMetrics.filter((m) => m.bank_id === growthBanks[0]));
     }
-    // Multi-bank: merge into { quarter, [bank]: growth } rows
     const byQuarter = new Map<string, any>();
     growthBanks.forEach((bank) => {
       const series = metricsToQuarterlyGrowth(rawMetrics.filter((m) => m.bank_id === bank));
@@ -231,6 +235,12 @@ export function DashboardPage() {
       return true;
     });
   }, [rawMetrics, growthBanks, growthFromYear, growthToYear]);
+
+  /** CAMELS KPIs computed from all metrics (not filtered by year/quarter). */
+  const camelsKpis = useMemo(
+    () => computeDashboardCamelsKpis(allMetrics, filterBank || undefined),
+    [allMetrics, filterBank]
+  );
 
   const quarterlyGrowthControls = (
     <div className={styles.growthRangeControls}>
@@ -336,30 +346,6 @@ export function DashboardPage() {
 
   const onExpandWidget = (widgetId: DashboardWidgetId) => {
     switch (widgetId) {
-      case "summary.totalRevenue":
-        setExpandedSummaryStat("totalRevenue");
-        return;
-      case "summary.bankCount":
-        setExpandedSummaryStat("bankCount");
-        return;
-      case "summary.avgGrowth":
-        setExpandedSummaryStat("avgGrowth");
-        return;
-      case "summary.totalDeposits":
-        setExpandedSummaryStat("totalDeposits");
-        return;
-      case "summary.totalLoans":
-        setExpandedSummaryStat("totalLoans");
-        return;
-      case "summary.netProfit":
-        setExpandedSummaryStat("netProfit");
-        return;
-      case "summary.avgRevenue":
-        setExpandedSummaryStat("avgRevenue");
-        return;
-      case "summary.avgProfit":
-        setExpandedSummaryStat("avgProfit");
-        return;
       case "chart.revenueByBank":
         setExpandedChart("revenue");
         return;
@@ -383,7 +369,6 @@ export function DashboardPage() {
   return (
     <div className={styles.page}>
 
-      {/* Connection: filter dropdowns use GET /banks and GET /quarters; changing filters refetches GET /metrics */}
       <div className={`card ${styles.filtersCard}`}>
         <div className={styles.filters}>
           <label className={styles.filterLabel}>
@@ -429,10 +414,16 @@ export function DashboardPage() {
               onClick={() => loadDashboard()}
               disabled={loading}
             >
-              {loading ? "Loading…" : "Refresh"}
+              {loading ? "Loading..." : "Refresh"}
             </button>
           </div>
         </div>
+        {filterBank && (
+          <div style={{ fontSize: "0.8125rem", color: "var(--color-text-subtle)", marginTop: "0.5rem" }}>
+            KPI cards show <strong>{filterBank}</strong> vs peer average ({camelsKpis.peerCount} peer{camelsKpis.peerCount !== 1 ? "s" : ""}).
+            Select "All banks" to see the group average.
+          </div>
+        )}
       </div>
 
       {error && (
@@ -442,7 +433,7 @@ export function DashboardPage() {
       )}
 
       {loading && !error && (
-        <p className={styles.loadingText}>Loading dashboard data…</p>
+        <p className={styles.loadingText}>Loading dashboard data...</p>
       )}
 
       {!loading && !error && revenueData.length === 0 && tableData.length === 0 && (
@@ -463,31 +454,6 @@ export function DashboardPage() {
 
       {!loading && !error && (revenueData.length > 0 || tableData.length > 0) && (
         <>
-
-          {expandedSummaryStat && (
-            <ExpandedSummaryStat
-              statKey={expandedSummaryStat}
-              statLabel={
-                expandedSummaryStat === "totalRevenue"
-                  ? "Total Revenue"
-                  : expandedSummaryStat === "bankCount"
-                    ? "Banks"
-                    : expandedSummaryStat === "avgGrowth"
-                      ? "Average Growth"
-                      : expandedSummaryStat === "totalDeposits"
-                        ? "Total Deposits"
-                        : expandedSummaryStat === "totalLoans"
-                          ? "Total Loans"
-                          : expandedSummaryStat === "avgRevenue"
-                            ? "Average Revenue"
-                            : expandedSummaryStat === "avgProfit"
-                              ? "Average Profit"
-                              : "Net Profit"
-              }
-              metrics={rawMetrics}
-              onClose={() => setExpandedSummaryStat(null)}
-            />
-          )}
 
           {expandedChart === "revenue" && (
             <ExpandedRevenueChart
@@ -538,8 +504,8 @@ export function DashboardPage() {
                 </div>
                 <div style={{ fontSize: "0.8125rem", color: "var(--color-text-muted)" }}>
                   {editMode
-                    ? "Drag to move • Resize from corners • Click ⤢ to expand"
-                    : "View mode • Click Edit layout to customize"}
+                    ? "Drag to move / Resize from corners / Click to expand"
+                    : "View mode / Click Edit layout to customize"}
                 </div>
               </div>
               <div style={{ display: "flex", gap: "0.5rem" }}>
@@ -567,7 +533,8 @@ export function DashboardPage() {
 
           <DashboardWidgetGrid
             ctx={{
-              summaryStats,
+              camelsKpis,
+              hasSelectedBank: !!filterBank,
               revenueData,
               revenueShareData,
               metricBreakdownData,

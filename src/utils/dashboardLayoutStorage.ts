@@ -6,10 +6,14 @@ const STORAGE_KEY = "dashboardLayout:v1";
 
 export function getDefaultDashboardLayoutState(): DashboardLayoutState {
   const slots: Array<{ slotId: string; widgetId: DashboardWidgetId | null }> = [
-    { slotId: "kpi-1", widgetId: "summary.totalRevenue" },
-    { slotId: "kpi-2", widgetId: "summary.bankCount" },
-    { slotId: "kpi-3", widgetId: "summary.avgGrowth" },
-    { slotId: "kpi-4", widgetId: "summary.netProfit" },
+    { slotId: "kpi-1", widgetId: "summary.roaa" },
+    { slotId: "kpi-2", widgetId: "summary.roae" },
+    { slotId: "kpi-3", widgetId: "summary.nim" },
+    { slotId: "kpi-4", widgetId: "summary.costOfFunds" },
+    { slotId: "kpi-5", widgetId: "summary.yieldOnLoans" },
+    { slotId: "kpi-6", widgetId: "summary.loanToDeposit" },
+    { slotId: "kpi-7", widgetId: "summary.loanGrowth" },
+    { slotId: "kpi-8", widgetId: "summary.depositGrowth" },
     { slotId: "chart-1", widgetId: "chart.revenueByBank" },
     { slotId: "chart-2", widgetId: "chart.revenueShare" },
     { slotId: "chart-3", widgetId: "chart.metricBreakdown" },
@@ -22,20 +26,19 @@ export function getDefaultDashboardLayoutState(): DashboardLayoutState {
     { i: "kpi-2", x: 3, y: 0, w: 3, h: 3, minW: 2, minH: 2 },
     { i: "kpi-3", x: 6, y: 0, w: 3, h: 3, minW: 2, minH: 2 },
     { i: "kpi-4", x: 9, y: 0, w: 3, h: 3, minW: 2, minH: 2 },
+    { i: "kpi-5", x: 0, y: 3, w: 3, h: 3, minW: 2, minH: 2 },
+    { i: "kpi-6", x: 3, y: 3, w: 3, h: 3, minW: 2, minH: 2 },
+    { i: "kpi-7", x: 6, y: 3, w: 3, h: 3, minW: 2, minH: 2 },
+    { i: "kpi-8", x: 9, y: 3, w: 3, h: 3, minW: 2, minH: 2 },
 
-    // Default dashboard order:
-    // - Revenue by bank + Revenue share in a 2-up row
-    // - Metric breakdown full width
-    // - Quarterly growth full width
-    // - Metrics table full width
-    { i: "chart-1", x: 0, y: 3, w: 6, h: 7, minW: 4, minH: 4 },
-    { i: "chart-2", x: 6, y: 3, w: 6, h: 7, minW: 4, minH: 4 },
-    { i: "chart-3", x: 0, y: 10, w: 12, h: 7, minW: 4, minH: 4 },
-    { i: "chart-4", x: 0, y: 17, w: 12, h: 7, minW: 6, minH: 5 },
-    { i: "table-1", x: 0, y: 25, w: 12, h: 8, minW: 6, minH: 5 },
+    { i: "chart-1", x: 0, y: 6, w: 6, h: 7, minW: 4, minH: 4 },
+    { i: "chart-2", x: 6, y: 6, w: 6, h: 7, minW: 4, minH: 4 },
+    { i: "chart-3", x: 0, y: 13, w: 12, h: 7, minW: 4, minH: 4 },
+    { i: "chart-4", x: 0, y: 20, w: 12, h: 7, minW: 6, minH: 5 },
+    { i: "table-1", x: 0, y: 27, w: 12, h: 8, minW: 6, minH: 5 },
   ];
 
-  return { version: 1, grid, slots };
+  return { version: 2, grid, slots };
 }
 
 export function loadDashboardLayoutState(): DashboardLayoutState {
@@ -43,7 +46,7 @@ export function loadDashboardLayoutState(): DashboardLayoutState {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return getDefaultDashboardLayoutState();
     const parsed = JSON.parse(raw);
-    if (!parsed || parsed.version !== 1) return getDefaultDashboardLayoutState();
+    if (!parsed || parsed.version !== 2) return getDefaultDashboardLayoutState();
     if (!Array.isArray(parsed.grid) || !Array.isArray(parsed.slots)) return getDefaultDashboardLayoutState();
 
     // Basic shape validation.
@@ -60,7 +63,7 @@ export function loadDashboardLayoutState(): DashboardLayoutState {
     if (gridIds.size !== slotIds.size) return getDefaultDashboardLayoutState();
     for (const id of gridIds) if (!slotIds.has(id)) return getDefaultDashboardLayoutState();
 
-    return { version: 1, grid, slots };
+    return { version: 2, grid, slots };
   } catch {
     return getDefaultDashboardLayoutState();
   }

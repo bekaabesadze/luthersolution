@@ -5,7 +5,7 @@ import styles from "./MobileNavBar.module.css";
 
 const primaryNavItems = [
   { to: "/dashboard", label: "Dashboard", icon: "dashboard" },
-  { to: "/camel", label: "CAMEL", icon: "camel" },
+  { to: "/camels", label: "CAMELS", icon: "camel" },
   { to: "/reports", label: "Reports", icon: "reports" },
 ];
 

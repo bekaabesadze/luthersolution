@@ -72,6 +72,13 @@ export function FilesPage() {
         });
       }
 
+      // Sort metrics alphabetically within each entry for consistent display across banks
+      for (const entries of grouped.values()) {
+        for (const entry of entries) {
+          entry.metrics.sort((a, b) => a.metric_name.localeCompare(b.metric_name));
+        }
+      }
+
       setFilesByYearQuarter(grouped);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load files");
