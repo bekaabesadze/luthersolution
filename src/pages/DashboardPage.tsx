@@ -41,6 +41,7 @@ export function DashboardPage() {
   const [metricBreakdownData, setMetricBreakdownData] = useState<{ name: string; value: number }[]>([]);
 
   const [loading, setLoading] = useState(true);
+  const [fullHistoryLoading, setFullHistoryLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [filterBank, setFilterBank] = useState<string>("");
@@ -58,18 +59,45 @@ export function DashboardPage() {
   const [dashboardLayout, setDashboardLayout] = useState(() => loadDashboardLayoutState());
   const [editMode, setEditMode] = useState(false);
 
+  const applyMetricsToState = useCallback((metrics: MetricRow[]) => {
+    setRawMetrics(metrics);
+    if (metrics.length > 0) {
+      setRevenueData(metricsToRevenueByBank(metrics));
+      setGrowthData(metricsToQuarterlyGrowth(metrics));
+      setTableData(metricsToTableRows(metrics));
+      setRevenueShareData(metricsToRevenueShareGrouped(metrics, 5));
+      setMetricBreakdownData(metricsToMetricBreakdown(metrics));
+    } else {
+      setRevenueData(emptyRevenue);
+      setGrowthData(emptyGrowth);
+      setTableData([]);
+      setRevenueShareData([]);
+      setMetricBreakdownData([]);
+    }
+  }, []);
+
   const loadDashboard = useCallback(async () => {
     setLoading(true);
     setError(null);
+
+    const filterParams = {
+      bank_id: filterBank || undefined,
+      year: filterYear ? Number(filterYear) : undefined,
+      quarter: filterQuarter ? Number(filterQuarter) : undefined,
+    };
+    const hasPeriodFilters = !!(
+      filterParams.bank_id ||
+      filterParams.year != null ||
+      filterParams.quarter != null
+    );
 
     try {
       const [banksRes, quartersRes, metricsRes] = await Promise.all([
         getBanks(),
         getQuarters(),
         getMetrics({
-          bank_id: filterBank || undefined,
-          year: filterYear ? Number(filterYear) : undefined,
-          quarter: filterQuarter ? Number(filterQuarter) : undefined,
+          ...filterParams,
+          recent_periods: hasPeriodFilters ? undefined : 2,
         }),
       ]);
 
@@ -77,28 +105,21 @@ export function DashboardPage() {
       setQuarters(quartersRes.quarters);
 
       const metrics = metricsRes.metrics;
-      setRawMetrics(metrics);
-      if (metrics.length > 0) {
-        setRevenueData(metricsToRevenueByBank(metrics));
-        setGrowthData(metricsToQuarterlyGrowth(metrics));
-        setTableData(metricsToTableRows(metrics));
-        setRevenueShareData(metricsToRevenueShareGrouped(metrics, 5));
-        setMetricBreakdownData(metricsToMetricBreakdown(metrics));
-      } else {
-        setRevenueData(emptyRevenue);
-        setGrowthData(emptyGrowth);
-        setTableData([]);
-        setRevenueShareData([]);
-        setMetricBreakdownData([]);
-      }
+      applyMetricsToState(metrics);
+      setAllMetrics(metrics);
 
-      // Also fetch all metrics (no filters) for CAMELS KPI peer comparison
-      if (filterBank || filterYear || filterQuarter) {
-        const allRes = await getMetrics();
-        setAllMetrics(allRes.metrics);
-      } else {
-        setAllMetrics(metrics);
-      }
+      setFullHistoryLoading(true);
+      void getMetrics(filterParams)
+        .then((fullRes) => {
+          applyMetricsToState(fullRes.metrics);
+          setAllMetrics(fullRes.metrics);
+        })
+        .catch(() => {
+          // Keep the initial partial payload if the background fetch fails.
+        })
+        .finally(() => {
+          setFullHistoryLoading(false);
+        });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load dashboard data");
       setRevenueData(emptyRevenue);
@@ -111,7 +132,7 @@ export function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [filterBank, filterYear, filterQuarter]);
+  }, [applyMetricsToState, filterBank, filterYear, filterQuarter]);
 
   useEffect(() => {
     loadDashboard();
@@ -434,6 +455,10 @@ export function DashboardPage() {
 
       {loading && !error && (
         <p className={styles.loadingText}>Loading dashboard data...</p>
+      )}
+
+      {!loading && !error && fullHistoryLoading && (
+        <p className={styles.loadingText}>Loading full history for charts...</p>
       )}
 
       {!loading && !error && revenueData.length === 0 && tableData.length === 0 && (

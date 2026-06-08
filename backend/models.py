@@ -6,7 +6,7 @@ processed once and dashboards can query without recalculating.
 """
 
 from datetime import datetime
-from sqlalchemy import Column, Integer, Float, String, DateTime
+from sqlalchemy import Column, Integer, Float, String, DateTime, Index
 from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
@@ -31,3 +31,8 @@ class QuarterlyMetric(Base):
     metric_name = Column(String(255), nullable=False, index=True)
     value = Column(Float, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_quarterly_metrics_year_quarter", "year", "quarter"),
+        Index("ix_quarterly_metrics_bank_period", "bank_id", "year", "quarter"),
+    )

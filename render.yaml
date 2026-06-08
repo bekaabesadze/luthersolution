@@ -2,6 +2,7 @@ services:
   - type: web
     name: bank-analytics-backend
     env: python
+    healthCheckPath: /health
     buildCommand: "pip install -r requirements.txt"
     startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT"
     envVars:
@@ -13,3 +14,14 @@ services:
       name: sqlite-data
       mountPath: /data
       sizeGB: 1
+
+# Optional Postgres migration (remove the disk block above when switching):
+# databases:
+#   - name: bank-analytics-db
+#     plan: basic-256mb
+# Then set DATABASE_URL on the web service:
+#   envVars:
+#     - key: DATABASE_URL
+#       fromDatabase:
+#         name: bank-analytics-db
+#         property: connectionString

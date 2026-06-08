@@ -197,6 +197,9 @@ export async function getMetrics(params?: MetricsParams): Promise<MetricsRespons
   if (params?.bank_id) search.set("bank_id", params.bank_id);
   if (params?.year != null) search.set("year", String(params.year));
   if (params?.quarter != null) search.set("quarter", String(params.quarter));
+  if (params?.recent_periods != null) search.set("recent_periods", String(params.recent_periods));
+  if (params?.limit != null) search.set("limit", String(params.limit));
+  if (params?.offset != null) search.set("offset", String(params.offset));
 
   const url = `${getBaseUrl()}/metrics${search.toString() ? `?${search.toString()}` : ""}`;
   const res = await fetch(url);

@@ -25,7 +25,9 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 from starlette.requests import Request
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from database import init_db, get_db
@@ -39,9 +41,9 @@ from schemas import (
     ForecastRequest,
     ForecastResponse,
 )
-from xbrl_parser import parse_xbrl_file
-from camel_excel_parser import parse_camel_excel_from_filelike
-from forecasting import build_forecast_response, SUPPORTED_QUERY_METRICS, MAX_FORECAST_HORIZON
+
+# Heavy parser/forecast modules are imported lazily inside upload/forecast handlers
+# so dashboard read endpoints start faster after a cold Render boot.
 
 # -----------------------------------------------------------------------------
 # App and CORS
@@ -112,6 +114,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        if request.method == "GET" and request.url.path in ("/health", "/banks", "/quarters", "/metrics"):
+            response.headers["Cache-Control"] = "public, max-age=60"
         # CSP: allow same origin and API; adjust if you add external scripts
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
@@ -125,6 +129,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 
 app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(GZipMiddleware, minimum_size=500)
 
 frontend_url = os.environ.get("FRONTEND_URL", "")
 allowed_origins = [
@@ -256,6 +261,8 @@ def _parse_upload_to_rows(
         )
 
     # Step 3: Parse XBRL file using the parser module
+    from xbrl_parser import parse_xbrl_file
+
     try:
         rows = parse_xbrl_file(
             file_content, filename, bank_name=bank_name, year=year, quarter=quarter
@@ -283,6 +290,29 @@ def _parse_upload_to_rows(
         )
 
     return rows
+
+
+def _recent_period_filters(db: Session, recent_periods: int):
+    """Return OR filters for the N most recent distinct (year, quarter) pairs."""
+    if recent_periods <= 0:
+        return None
+
+    period_rows = (
+        db.query(QuarterlyMetric.year, QuarterlyMetric.quarter)
+        .distinct()
+        .order_by(QuarterlyMetric.year.desc(), QuarterlyMetric.quarter.desc())
+        .limit(recent_periods)
+        .all()
+    )
+    if not period_rows:
+        return None
+
+    return or_(
+        *[
+            (QuarterlyMetric.year == year) & (QuarterlyMetric.quarter == quarter)
+            for year, quarter in period_rows
+        ]
+    )
 
 
 def _upload_exists(db: Session, bank_id: str, year: int, quarter: int) -> bool:
@@ -396,6 +426,8 @@ async def upload_camel_excel(
     """
     if not file.filename or not file.filename.lower().endswith(".xlsx"):
         raise HTTPException(status_code=400, detail="Only .xlsx files are accepted for CAMEL upload.")
+    from camel_excel_parser import parse_camel_excel_from_filelike
+
     try:
         content = await file.read()
         rows = parse_camel_excel_from_filelike(
@@ -527,6 +559,8 @@ def forecast_outlook(
             detail=f"Unknown peer bank(s): {', '.join(sorted(invalid_peers))}",
         )
 
+    from forecasting import build_forecast_response, SUPPORTED_QUERY_METRICS, MAX_FORECAST_HORIZON
+
     horizon_quarters = max(1, min(int(payload.horizon_quarters or MAX_FORECAST_HORIZON), MAX_FORECAST_HORIZON))
     bank_scope = [primary_bank_id, *deduped_peers]
 
@@ -586,9 +620,18 @@ def get_metrics(
     bank_id: Optional[str] = Query(None, description="Filter by bank identifier"),
     year: Optional[int] = Query(None, description="Filter by year"),
     quarter: Optional[int] = Query(None, ge=1, le=4, description="Filter by quarter (1-4)"),
+    recent_periods: Optional[int] = Query(
+        None,
+        ge=1,
+        le=32,
+        description="Only return metrics from the N most recent reporting periods",
+    ),
+    limit: Optional[int] = Query(None, ge=1, le=20000, description="Maximum number of rows to return"),
+    offset: int = Query(0, ge=0, description="Number of rows to skip before returning results"),
 ) -> MetricsListResponse:
     """
-    Return stored metrics for dashboards. Optional filters: bank_id, year, quarter.
+    Return stored metrics for dashboards. Optional filters: bank_id, year, quarter,
+    recent_periods, limit, offset.
     """
     q = db.query(QuarterlyMetric)
     if bank_id is not None:
@@ -597,7 +640,24 @@ def get_metrics(
         q = q.filter(QuarterlyMetric.year == year)
     if quarter is not None:
         q = q.filter(QuarterlyMetric.quarter == quarter)
-    q = q.order_by(QuarterlyMetric.year.desc(), QuarterlyMetric.quarter.desc(), QuarterlyMetric.bank_id)
+    if recent_periods is not None:
+        period_filter = _recent_period_filters(db, recent_periods)
+        if period_filter is not None:
+            q = q.filter(period_filter)
+
+    q = q.order_by(
+        QuarterlyMetric.year.desc(),
+        QuarterlyMetric.quarter.desc(),
+        QuarterlyMetric.bank_id,
+        QuarterlyMetric.metric_name,
+    )
+
+    total_count = q.count()
+    if offset:
+        q = q.offset(offset)
+    if limit is not None:
+        q = q.limit(limit)
+
     rows = q.all()
     metrics = [
         MetricResponse(
@@ -610,4 +670,4 @@ def get_metrics(
         )
         for r in rows
     ]
-    return MetricsListResponse(metrics=metrics, count=len(metrics))
+    return MetricsListResponse(metrics=metrics, count=total_count)

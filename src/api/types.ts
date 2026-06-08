@@ -53,6 +53,10 @@ export interface MetricsParams {
   bank_id?: string;
   year?: number;
   quarter?: number;
+  /** Only return metrics from the N most recent reporting periods */
+  recent_periods?: number;
+  limit?: number;
+  offset?: number;
 }
 
 export interface ForecastRequest {

@@ -49,3 +49,28 @@ Once both servers are running:
 - The backend uses SQLite for data persistence
 - The frontend connects to the backend API automatically via CORS
 - Use `--reload` flag for auto-reload during development
+
+## Performance
+
+The dashboard loads in two phases for faster first paint:
+
+1. **Initial load**: banks, quarters, and the 2 most recent reporting periods (`GET /metrics?recent_periods=2`)
+2. **Background load**: full metric history for growth charts and tables
+
+If the hosted backend feels slow on the first visit after idle time, that is usually a **Render cold start**. Fixes:
+
+- Upgrade the Render web service to a paid always-on instance (free tier spins down after inactivity)
+- Keep `/health` warm with an external uptime ping every 5–10 minutes
+- Deploy with `healthCheckPath: /health` (see `render.yaml`)
+
+Production baseline (warm backend): `/metrics` without filters returned ~669 KB / 5,646 rows. Using `recent_periods=2` reduces the first payload dramatically.
+
+## Database
+
+**Current default:** SQLite on Render persistent disk (`/data/bank_analytics.db`).
+
+**When SQLite is enough:** single-instance deployment, moderate data volume, and low concurrent write traffic.
+
+**When to move to Postgres:** multiple concurrent users, slow queries after optimization, or you want managed backups and easier scaling. The backend already supports Postgres via `DATABASE_URL` — set it to a Render Postgres or Supabase connection string and remove the persistent disk from `render.yaml`.
+
+FastAPI remains required for XBRL parsing, Excel parsing, and forecasting regardless of database choice.
